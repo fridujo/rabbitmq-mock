@@ -6,7 +6,11 @@
 
     <groupId>com.github.fridujo</groupId>
     <artifactId>rabbitmq-mock</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0</version>
+
+    <name>RabbitMQ-Mock</name>
+    <description>Mock for RabbitMQ Java amqp-client</description>
+    <url>https://github.com/fridujo/rabbitmq-mock</url>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
