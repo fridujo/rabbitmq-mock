@@ -47,6 +47,18 @@
     </developers>
 
     <dependencies>
+        <dependency>
+            <groupId>org.springframework.amqp</groupId>
+            <artifactId>spring-rabbit</artifactId>
+            <version>${spring.amqp.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.rabbitmq</groupId>
+            <artifactId>amqp-client</artifactId>
+            <version>${rabbitmq.client.version}</version>
+        </dependency>
+        
         <!-- Test dependencies -->
         <dependency>
             <groupId>org.assertj</groupId>
