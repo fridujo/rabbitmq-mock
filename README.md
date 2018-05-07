@@ -1,6 +1,7 @@
 # RabbitMQ-mock
 [![Build Status](https://travis-ci.com/fridujo/rabbitmq-mock.svg?branch=master)](https://travis-ci.com/fridujo/rabbitmq-mock)
 [![Coverage Status](https://coveralls.io/repos/github/fridujo/rabbitmq-mock/badge.svg?branch=master)](https://coveralls.io/github/fridujo/rabbitmq-mock?branch=master)
+[![License](https://img.shields.io/github/license/fridujo/spring-automocker.svg)](https://opensource.org/licenses/Apache-2.0)
 
 Mock for RabbitMQ Java [amqp-client](https://github.com/rabbitmq/rabbitmq-java-client).
 
