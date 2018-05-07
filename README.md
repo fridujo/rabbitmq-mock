@@ -7,11 +7,13 @@ Mock for RabbitMQ Java [amqp-client](https://github.com/rabbitmq/rabbitmq-java-c
 ### Motivation
 
 This project aims to emulate RabbitMQ behavior for test purposes, through:
-* `com.rabbitmq.client.ConnectionFactory` with [`MockConnectionFactory`](src/main/java/com/github/fridujo/MockConnectionFactory.java)
+* `com.rabbitmq.client.ConnectionFactory` with [`MockConnectionFactory`](src/main/java/com/github/fridujo/rabbitmq/mock/MockConnectionFactory.java)
+* `org.springframework.amqp.rabbit.connection.ConnectionFactory` with [`MockConnectionFactory`](src/main/java/com/github/fridujo/rabbitmq/mock/spring/MockConnectionFactory.java)
 
 ## Example Use
 
-Replace the use of `com.rabbitmq.client.ConnectionFactory` by [`MockConnectionFactory`](src/main/java/com/github/fridujo/MockConnectionFactory.java):
+### Without Spring
+Replace the use of `com.rabbitmq.client.ConnectionFactory` by [`MockConnectionFactory`](src/main/java/com/github/fridujo/rabbitmq/mock/MockConnectionFactory.java)
 
 ```java
 ConnectionFactory factory = new MockConnectionFactory();
@@ -27,6 +29,26 @@ try (Connection conn = factory.newConnection()) {
     }
 }
 ```
+
+More details in [integration-test](src/test/java/com/github/fridujo/rabbitmq/mock/IntegrationTest.java)
+
+### With Spring
+Replace the use of `org.springframework.amqp.rabbit.connection.ConnectionFactory` by [`MockConnectionFactory`](src/main/java/com/github/fridujo/rabbitmq/mock/spring/MockConnectionFactory.java)
+
+```java
+
+@Configuration
+@Import(AppConfiguration.class)
+class TestConfiguration {
+    @Bean
+    ConnectionFactory connectionFactory() {
+        return new MockConnectionFactory();
+    }
+}
+```
+
+More details in [integration-test](src/test/java/com/github/fridujo/rabbitmq/mock/spring/SpringIntegrationTest.java)
+
 
 ## Getting Started
 
