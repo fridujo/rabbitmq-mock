@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -260,17 +259,17 @@ public class MockChannel implements Channel {
 
     @Override
     public AMQP.Exchange.UnbindOk exchangeUnbind(String destination, String source, String routingKey) {
-        throw new UnsupportedOperationException();
+        return exchangeUnbind(destination, source, routingKey, Collections.emptyMap());
     }
 
     @Override
     public AMQP.Exchange.UnbindOk exchangeUnbind(String destination, String source, String routingKey, Map<String, Object> arguments) {
-        throw new UnsupportedOperationException();
+        return node.exchangeUnbind(destination, source, routingKey, nullToEmpty(arguments));
     }
 
     @Override
     public void exchangeUnbindNoWait(String destination, String source, String routingKey, Map<String, Object> arguments) {
-        throw new UnsupportedOperationException();
+        exchangeUnbind(destination, source, routingKey, arguments);
     }
 
     @Override

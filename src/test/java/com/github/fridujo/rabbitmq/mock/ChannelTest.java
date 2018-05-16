@@ -157,4 +157,44 @@ class ChannelTest {
             }
         }
     }
+
+    @Test
+    void exchangeUnbind_removes_binding() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                assertThat(channel.exchangeDeclare("ex-from", BuiltinExchangeType.FANOUT)).isNotNull();
+                assertThat(channel.exchangeDeclare("ex-to", BuiltinExchangeType.FANOUT)).isNotNull();
+                assertThat(channel.queueDeclare()).isNotNull();
+
+                channel.exchangeBindNoWait("ex-to", "ex-from", "test.key", null);
+                assertThat(channel.queueBind("", "ex-to", "queue.used")).isNotNull();
+
+                assertThat(channel.exchangeUnbind("ex-to", "ex-from", "test.key")).isNotNull();
+
+                channel.basicPublish("ex-from", "unused", null, "test message".getBytes());
+                GetResponse response = channel.basicGet("", true);
+                assertThat(response).isNull();
+            }
+        }
+    }
+
+    @Test
+    void exchangeUnbindNoWait_removes_binding() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                assertThat(channel.exchangeDeclare("ex-from", BuiltinExchangeType.FANOUT)).isNotNull();
+                assertThat(channel.exchangeDeclare("ex-to", BuiltinExchangeType.FANOUT)).isNotNull();
+                assertThat(channel.queueDeclare()).isNotNull();
+
+                channel.exchangeBindNoWait("ex-to", "ex-from", "test.key", null);
+                assertThat(channel.queueBind("", "ex-to", "queue.used")).isNotNull();
+
+                channel.exchangeUnbindNoWait("ex-to", "ex-from", "test.key", null);
+
+                channel.basicPublish("ex-from", "unused", null, "test message".getBytes());
+                GetResponse response = channel.basicGet("", true);
+                assertThat(response).isNull();
+            }
+        }
+    }
 }

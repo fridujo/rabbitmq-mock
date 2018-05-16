@@ -38,6 +38,11 @@ public abstract class BindableMockExchange implements MockExchange {
     }
 
     @Override
+    public void unbind(ReceiverPointer receiver, String routingKey) {
+        receiversByBindingKeys.remove(routingKey);
+    }
+
+    @Override
     public ReceiverPointer pointer() {
         return pointer;
     }

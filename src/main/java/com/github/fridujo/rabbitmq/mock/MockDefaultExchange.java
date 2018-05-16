@@ -20,6 +20,11 @@ class MockDefaultExchange implements MockExchange {
     }
 
     @Override
+    public void unbind(ReceiverPointer pointer, String routingKey) {
+        // nothing needed
+    }
+
+    @Override
     public ReceiverPointer pointer() {
         throw new IllegalStateException("No ReceiverPointer (internal use) should be needed for the default exchange");
     }
