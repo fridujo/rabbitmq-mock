@@ -53,6 +53,11 @@ public class MockNode {
         return new AMQImpl.Exchange.DeclareOk();
     }
 
+    public AMQP.Exchange.DeleteOk exchangeDelete(String exchange) {
+        exchanges.remove(exchange);
+        return new AMQImpl.Exchange.DeleteOk();
+    }
+
     public AMQP.Queue.DeclareOk queueDeclare(String queue, boolean durable, boolean exclusive, boolean autoDelete, Map<String, Object> arguments) {
         queues.putIfAbsent(queue, new MockQueue(queue));
         return new AMQP.Queue.DeclareOk.Builder()
