@@ -71,7 +71,7 @@ public class MockConnection implements Connection {
 
     @Override
     public Channel createChannel(int channelNumber) {
-        MockChannel mockChannel = new MockChannel(channelNumber, mockNode);
+        MockChannel mockChannel = new MockChannel(channelNumber, mockNode, this);
         return mockChannel;
     }
 

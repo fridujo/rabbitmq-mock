@@ -32,11 +32,13 @@ public class MockChannel implements Channel {
 
     private final int channelNumber;
     private final MockNode node;
+    private final MockConnection mockConnection;
     private final AtomicBoolean opened = new AtomicBoolean(true);
 
-    public MockChannel(int channelNumber, MockNode node) {
+    public MockChannel(int channelNumber, MockNode node, MockConnection mockConnection) {
         this.channelNumber = channelNumber;
         this.node = node;
+        this.mockConnection = mockConnection;
     }
 
     @Override
@@ -46,7 +48,7 @@ public class MockChannel implements Channel {
 
     @Override
     public Connection getConnection() {
-        throw new UnsupportedOperationException();
+        return mockConnection;
     }
 
     @Override
