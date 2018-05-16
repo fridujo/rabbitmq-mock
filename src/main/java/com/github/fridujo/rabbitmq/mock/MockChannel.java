@@ -350,7 +350,7 @@ public class MockChannel implements Channel {
 
     @Override
     public AMQP.Queue.PurgeOk queuePurge(String queue) {
-        throw new UnsupportedOperationException();
+        return node.queuePurge(lastGeneratedIfEmpty(queue));
     }
 
     @Override
@@ -546,12 +546,12 @@ public class MockChannel implements Channel {
 
     @Override
     public long messageCount(String queue) {
-        throw new UnsupportedOperationException();
+        return node.messageCount(lastGeneratedIfEmpty(queue));
     }
 
     @Override
     public long consumerCount(String queue) {
-        throw new UnsupportedOperationException();
+        return node.consumerCount(lastGeneratedIfEmpty(queue));
     }
 
     @Override

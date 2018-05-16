@@ -243,4 +243,19 @@ class ChannelTest {
             }
         }
     }
+
+    @Test
+    void queuePurge_removes_all_messages() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                String queueName = channel.queueDeclare().getQueue();
+                channel.basicPublish("", queueName, null, "test message".getBytes());
+                channel.basicPublish("", queueName, null, "test message".getBytes());
+
+                assertThat(channel.messageCount("")).isEqualTo(2);
+                assertThat(channel.queuePurge("")).isNotNull();
+                assertThat(channel.messageCount("")).isEqualTo(0);
+            }
+        }
+    }
 }
