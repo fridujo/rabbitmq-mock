@@ -10,16 +10,17 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class MockNode {
+public class MockNode implements ReceiverRegistry {
 
+    private final MockDefaultExchange defaultExchange = new MockDefaultExchange(this);
+    private final MockQueue unroutedQueue = new MockQueue("unrouted");
     private final Map<String, MockExchange> exchanges = new ConcurrentHashMap<>();
-
     private final Map<String, MockQueue> queues = new ConcurrentHashMap<>();
 
 
     public MockNode() {
-        exchanges.put("", new MockDefaultExchange(this));
-        queues.put("unrouted", new MockQueue("unrouted"));
+        exchanges.put("", defaultExchange);
+        queues.put("unrouted", unroutedQueue);
     }
 
     public void basicPublish(String exchange, String routingKey, boolean mandatory, boolean immediate, AMQP.BasicProperties props, byte[] body) {
@@ -28,7 +29,7 @@ public class MockNode {
         }
         AMQP.BasicProperties nonNullProperties = props != null ? props : new AMQP.BasicProperties.Builder().build();
 
-        exchanges.get(exchange).publish(routingKey, nonNullProperties, body);
+        exchanges.get(exchange).publish(null, routingKey, nonNullProperties, body);
     }
 
     public String basicConsume(String queueName, boolean autoAck, String consumerTag, boolean noLocal, boolean exclusive, Map<String, Object> arguments, Consumer callback) {
@@ -49,13 +50,20 @@ public class MockNode {
     }
 
     public AMQP.Exchange.DeclareOk exchangeDeclare(String exchangeName, String type, boolean durable, boolean autoDelete, boolean internal, Map<String, Object> arguments) {
-        exchanges.put(exchangeName, MockExchangeFactory.build(exchangeName, type));
+        exchanges.put(exchangeName, MockExchangeFactory.build(exchangeName, type, this));
         return new AMQImpl.Exchange.DeclareOk();
     }
 
     public AMQP.Exchange.DeleteOk exchangeDelete(String exchange) {
         exchanges.remove(exchange);
         return new AMQImpl.Exchange.DeleteOk();
+    }
+
+    public AMQP.Exchange.BindOk exchangeBind(String destinationName, String sourceName, String routingKey, Map<String, Object> arguments) {
+        MockExchange source = getExchangeUnchecked(sourceName);
+        MockExchange destination = getExchangeUnchecked(destinationName);
+        source.bind(destination.pointer(), routingKey);
+        return new AMQImpl.Exchange.BindOk();
     }
 
     public AMQP.Queue.DeclareOk queueDeclare(String queue, boolean durable, boolean exclusive, boolean autoDelete, Map<String, Object> arguments) {
@@ -68,7 +76,7 @@ public class MockNode {
     public AMQP.Queue.BindOk queueBind(String queueName, String exchangeName, String routingKey, Map<String, Object> arguments) {
         MockExchange exchange = getExchangeUnchecked(exchangeName);
         MockQueue queue = getQueueUnchecked(queueName);
-        exchange.bind(queue, routingKey);
+        exchange.bind(queue.pointer(), routingKey);
         return new AMQImpl.Queue.BindOk();
     }
 
@@ -79,6 +87,17 @@ public class MockNode {
     public GetResponse basicGet(String queueName, boolean autoAck) {
         MockQueue queue = getQueueUnchecked(queueName);
         return queue.basicGet(autoAck);
+    }
+
+    @Override
+    public Receiver getReceiver(ReceiverPointer receiverPointer) {
+        final Receiver receiver;
+        if (receiverPointer.type == ReceiverPointer.Type.EXCHANGE) {
+            receiver = exchanges.getOrDefault(receiverPointer.name, defaultExchange);
+        } else {
+            receiver = queues.getOrDefault(receiverPointer.name, unroutedQueue);
+        }
+        return receiver;
     }
 
 

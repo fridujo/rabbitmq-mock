@@ -10,12 +10,17 @@ class MockDefaultExchange implements MockExchange {
     }
 
     @Override
-    public void publish(String routingKey, AMQP.BasicProperties props, byte[] body) {
+    public void publish(String previousExchangeName, String routingKey, AMQP.BasicProperties props, byte[] body) {
         node.getQueue(routingKey).ifPresent(q -> q.publish("default", routingKey, props, body));
     }
 
     @Override
-    public void bind(MockQueue mockQueue, String routingKey) {
+    public void bind(ReceiverPointer receiver, String routingKey) {
         // nothing needed
+    }
+
+    @Override
+    public ReceiverPointer pointer() {
+        throw new IllegalStateException("No ReceiverPointer (internal use) should be needed for the default exchange");
     }
 }

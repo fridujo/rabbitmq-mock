@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -35,6 +36,8 @@ public class MockChannel implements Channel {
     private final MockNode node;
     private final MockConnection mockConnection;
     private final AtomicBoolean opened = new AtomicBoolean(true);
+
+    private String lastGeneratedQueueName;
 
     public MockChannel(int channelNumber, MockNode node, MockConnection mockConnection) {
         this.channelNumber = channelNumber;
@@ -238,17 +241,17 @@ public class MockChannel implements Channel {
 
     @Override
     public AMQP.Exchange.BindOk exchangeBind(String destination, String source, String routingKey) {
-        throw new UnsupportedOperationException();
+        return exchangeBind(destination, source, routingKey, Collections.emptyMap());
     }
 
     @Override
     public AMQP.Exchange.BindOk exchangeBind(String destination, String source, String routingKey, Map<String, Object> arguments) {
-        throw new UnsupportedOperationException();
+        return node.exchangeBind(destination, source, routingKey, nullToEmpty(arguments));
     }
 
     @Override
     public void exchangeBindNoWait(String destination, String source, String routingKey, Map<String, Object> arguments) {
-        throw new UnsupportedOperationException();
+        exchangeBind(destination, source, routingKey, arguments);
     }
 
     @Override
@@ -268,12 +271,12 @@ public class MockChannel implements Channel {
 
     @Override
     public AMQP.Queue.DeclareOk queueDeclare() {
-        return node.queueDeclare(UUID.randomUUID().toString(), false, true, true, null);
+        return queueDeclare("", false, true, true, Collections.emptyMap());
     }
 
     @Override
     public AMQP.Queue.DeclareOk queueDeclare(String queue, boolean durable, boolean exclusive, boolean autoDelete, Map<String, Object> arguments) {
-        return node.queueDeclare(queue, durable, exclusive, autoDelete, arguments);
+        return node.queueDeclare(generateIfEmpty(queue), durable, exclusive, autoDelete, arguments);
     }
 
     @Override
@@ -306,7 +309,7 @@ public class MockChannel implements Channel {
 
     @Override
     public AMQP.Queue.BindOk queueBind(String queue, String exchange, String routingKey) {
-        return node.queueBind(queue, exchange, routingKey, null);
+        return node.queueBind(lastGeneratedIfEmpty(queue), exchange, routingKey, null);
     }
 
     @Override
@@ -336,7 +339,7 @@ public class MockChannel implements Channel {
 
     @Override
     public GetResponse basicGet(String queue, boolean autoAck) {
-        return node.basicGet(queue, autoAck);
+        return node.basicGet(lastGeneratedIfEmpty(queue), autoAck);
     }
 
     @Override
@@ -567,5 +570,20 @@ public class MockChannel implements Channel {
 
     private Map<String, Object> nullToEmpty(Map<String, Object> arguments) {
         return arguments != null ? arguments : Collections.emptyMap();
+    }
+
+    private String generateIfEmpty(String queue) {
+        final String definitiveQueueName;
+        if ("".equals(queue)) {
+            definitiveQueueName = "amq.gen-" + UUID.randomUUID().toString();
+            this.lastGeneratedQueueName = definitiveQueueName;
+        } else {
+            definitiveQueueName = queue;
+        }
+        return definitiveQueueName;
+    }
+
+    private String lastGeneratedIfEmpty(String queue) {
+        return "".equals(queue) ? Objects.requireNonNull(lastGeneratedQueueName, "No server-named queue previously created") : queue;
     }
 }

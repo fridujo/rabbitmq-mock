@@ -2,8 +2,8 @@ package com.github.fridujo.rabbitmq.mock;
 
 public class MockDirectExchange extends BindableMockExchange {
 
-    public MockDirectExchange(String name) {
-        super(name);
+    public MockDirectExchange(String name, ReceiverRegistry receiverRegistry) {
+        super(name, receiverRegistry);
     }
 
     @Override

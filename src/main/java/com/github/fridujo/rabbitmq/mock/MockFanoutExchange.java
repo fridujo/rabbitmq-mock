@@ -2,8 +2,8 @@ package com.github.fridujo.rabbitmq.mock;
 
 public class MockFanoutExchange extends BindableMockExchange {
 
-    protected MockFanoutExchange(String name) {
-        super(name);
+    protected MockFanoutExchange(String name, ReceiverRegistry receiverRegistry) {
+        super(name, receiverRegistry);
     }
 
     @Override
