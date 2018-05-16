@@ -12,10 +12,12 @@ import com.rabbitmq.client.UnblockedCallback;
 import java.net.InetAddress;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class MockConnection implements Connection {
 
     private final AtomicBoolean opened = new AtomicBoolean(true);
+    private final AtomicInteger channelSequence = new AtomicInteger();
     private final MockNode mockNode;
 
     public MockConnection(MockNode mockNode) {
@@ -64,12 +66,13 @@ public class MockConnection implements Connection {
 
     @Override
     public Channel createChannel() {
-        return new MockChannel(mockNode);
+        return createChannel(channelSequence.incrementAndGet());
     }
 
     @Override
     public Channel createChannel(int channelNumber) {
-        throw new UnsupportedOperationException();
+        MockChannel mockChannel = new MockChannel(channelNumber, mockNode);
+        return mockChannel;
     }
 
     @Override

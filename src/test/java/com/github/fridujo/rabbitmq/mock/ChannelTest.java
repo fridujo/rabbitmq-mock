@@ -5,6 +5,7 @@ import com.rabbitmq.client.Connection;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.util.Random;
 import java.util.concurrent.TimeoutException;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,6 +28,16 @@ class ChannelTest {
             try (Channel channel = conn.createChannel()) {
                 channel.abort();
                 assertThat(channel.isOpen()).isFalse();
+            }
+        }
+    }
+
+    @Test
+    void channel_number_can_be_accessed() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            int channelNumber = new Random().nextInt();
+            try (Channel channel = conn.createChannel(channelNumber)) {
+                assertThat(channel.getChannelNumber()).isEqualTo(channelNumber);
             }
         }
     }
