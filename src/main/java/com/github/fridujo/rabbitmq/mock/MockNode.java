@@ -83,6 +83,11 @@ public class MockNode implements ReceiverRegistry {
             .build();
     }
 
+    public AMQP.Queue.DeleteOk queueDelete(String queueName, boolean ifUnused, boolean ifEmpty) {
+        MockQueue queue = queues.remove(queueName);
+        return new AMQImpl.Queue.DeleteOk(queue != null ? queue.messageCount() : 0);
+    }
+
     public AMQP.Queue.BindOk queueBind(String queueName, String exchangeName, String routingKey, Map<String, Object> arguments) {
         MockExchange exchange = getExchangeUnchecked(exchangeName);
         MockQueue queue = getQueueUnchecked(queueName);

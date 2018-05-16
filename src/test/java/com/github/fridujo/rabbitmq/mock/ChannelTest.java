@@ -219,4 +219,28 @@ class ChannelTest {
             }
         }
     }
+
+    @Test
+    void queueDelete_deletes_it() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                assertThat(channel.queueDeclare()).isNotNull();
+                assertThat(channel.queueDelete("")).isNotNull();
+                assertThatExceptionOfType(IOException.class)
+                    .isThrownBy(() -> channel.queueDeclarePassive(""));
+            }
+        }
+    }
+
+    @Test
+    void queueDeleteNoWait_deletes_it() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                assertThat(channel.queueDeclare()).isNotNull();
+                channel.queueDeleteNoWait("", false, false);
+                assertThatExceptionOfType(IOException.class)
+                    .isThrownBy(() -> channel.queueDeclarePassive(""));
+            }
+        }
+    }
 }
