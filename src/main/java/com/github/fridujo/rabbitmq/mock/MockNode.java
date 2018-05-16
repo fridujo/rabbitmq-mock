@@ -95,6 +95,12 @@ public class MockNode implements ReceiverRegistry {
         return new AMQImpl.Queue.BindOk();
     }
 
+    public AMQP.Queue.PurgeOk queuePurge(String queueName) {
+        MockQueue queue = getQueueUnchecked(queueName);
+        int messageCount = queue.purge();
+        return new AMQImpl.Queue.PurgeOk(messageCount);
+    }
+
     public void basicAck(long deliveryTag) {
         queues.values().forEach(q -> q.basicAck(deliveryTag));
     }
@@ -132,5 +138,15 @@ public class MockNode implements ReceiverRegistry {
 
     Optional<MockExchange> getExchange(String name) {
         return Optional.ofNullable(exchanges.get(name));
+    }
+
+    public int messageCount(String queueName) {
+        MockQueue queue = getQueueUnchecked(queueName);
+        return queue.messageCount();
+    }
+
+    public long consumerCount(String queueName) {
+        MockQueue queue = getQueueUnchecked(queueName);
+        return queue.consumerCount();
     }
 }
