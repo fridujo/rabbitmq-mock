@@ -50,7 +50,7 @@ public class MockChannel implements Channel {
     @Override
     public void close() {
         // Called by RabbitTemplate#execute, RabbitTemplate#send, BlockingQueueConsumer#stop
-        opened.set(false);
+        close(AMQP.REPLY_SUCCESS, "OK");
     }
 
     @Override
@@ -60,12 +60,12 @@ public class MockChannel implements Channel {
 
     @Override
     public void abort() {
-        throw new UnsupportedOperationException();
+        abort(AMQP.REPLY_SUCCESS, "OK");
     }
 
     @Override
     public void abort(int closeCode, String closeMessage) {
-        throw new UnsupportedOperationException();
+        close(closeCode, closeMessage);
     }
 
     @Override
