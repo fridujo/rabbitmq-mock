@@ -7,6 +7,9 @@ public class MockTopicExchange extends BindableMockExchange {
     }
 
     protected boolean match(String bindingKey, String routingKey) {
-        return true;
+        String bindingRegex = bindingKey
+            .replace("*", "([^\\.]+)")
+            .replace("#", "(.+)");
+        return routingKey.matches(bindingRegex);
     }
 }

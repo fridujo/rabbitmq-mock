@@ -35,7 +35,7 @@ class SpringIntegrationTest {
         String messageBody = "Hello world!";
         try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(AmqpConfiguration.class)) {
             RabbitTemplate rabbitTemplate = queueAndExchangeSetup(context);
-            rabbitTemplate.convertAndSend(EXCHANGE_NAME, "test.key", messageBody);
+            rabbitTemplate.convertAndSend(EXCHANGE_NAME, "test.key1", messageBody);
 
             Message message = rabbitTemplate.receive(QUEUE_NAME);
 
@@ -58,7 +58,7 @@ class SpringIntegrationTest {
             try {
                 container.start();
 
-                rabbitTemplate.convertAndSend(EXCHANGE_NAME, "test.key", messageBody);
+                rabbitTemplate.convertAndSend(EXCHANGE_NAME, "test.key2", messageBody);
 
                 List<String> receivedMessages = new ArrayList<>();
                 assertTimeoutPreemptively(ofMillis(500L), () -> {
@@ -83,7 +83,7 @@ class SpringIntegrationTest {
         rabbitAdmin.declareQueue(queue);
         TopicExchange exchange = new TopicExchange(EXCHANGE_NAME);
         rabbitAdmin.declareExchange(exchange);
-        rabbitAdmin.declareBinding(BindingBuilder.bind(queue).to(exchange).with(QUEUE_NAME));
+        rabbitAdmin.declareBinding(BindingBuilder.bind(queue).to(exchange).with("test.*"));
 
 
         return context.getBean(RabbitTemplate.class);
