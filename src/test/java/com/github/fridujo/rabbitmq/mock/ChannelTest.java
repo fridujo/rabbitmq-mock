@@ -41,4 +41,13 @@ class ChannelTest {
             }
         }
     }
+
+    @Test
+    void getConnection_returns_the_actual_connection_which_created_the_channel() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                assertThat(channel.getConnection()).isEqualTo(conn);
+            }
+        }
+    }
 }
