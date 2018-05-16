@@ -20,4 +20,14 @@ class ChannelTest {
             }
         }
     }
+
+    @Test
+    void abort_closes_channel() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                channel.abort();
+                assertThat(channel.isOpen()).isFalse();
+            }
+        }
+    }
 }
