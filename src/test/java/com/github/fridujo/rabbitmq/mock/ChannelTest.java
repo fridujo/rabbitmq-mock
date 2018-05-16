@@ -94,4 +94,28 @@ class ChannelTest {
             }
         }
     }
+
+    @Test
+    void exchangeDelete_removes_it() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                channel.exchangeDeclareNoWait("test1", BuiltinExchangeType.DIRECT, true, false, false, null);
+                assertThat(channel.exchangeDelete("test1")).isNotNull();
+                assertThatExceptionOfType(IOException.class)
+                    .isThrownBy(() -> channel.exchangeDeclarePassive("test1"));
+            }
+        }
+    }
+
+    @Test
+    void exchangeDeleteNoWait_removes_it() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                channel.exchangeDeclareNoWait("test1", BuiltinExchangeType.DIRECT, true, false, false, null);
+                channel.exchangeDeleteNoWait("test1", false);
+                assertThatExceptionOfType(IOException.class)
+                    .isThrownBy(() -> channel.exchangeDeclarePassive("test1"));
+            }
+        }
+    }
 }

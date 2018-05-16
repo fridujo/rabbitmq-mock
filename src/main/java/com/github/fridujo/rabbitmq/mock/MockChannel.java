@@ -223,17 +223,17 @@ public class MockChannel implements Channel {
 
     @Override
     public AMQP.Exchange.DeleteOk exchangeDelete(String exchange, boolean ifUnused) {
-        throw new UnsupportedOperationException();
+        return node.exchangeDelete(exchange);
     }
 
     @Override
     public void exchangeDeleteNoWait(String exchange, boolean ifUnused) {
-        throw new UnsupportedOperationException();
+        exchangeDelete(exchange, ifUnused);
     }
 
     @Override
     public AMQP.Exchange.DeleteOk exchangeDelete(String exchange) {
-        throw new UnsupportedOperationException();
+        return exchangeDelete(exchange, false);
     }
 
     @Override
