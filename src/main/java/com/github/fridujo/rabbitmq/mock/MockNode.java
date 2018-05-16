@@ -90,4 +90,8 @@ public class MockNode {
         }
         return queues.get(queueName);
     }
+
+    Optional<MockExchange> getExchange(String name) {
+        return Optional.ofNullable(exchanges.get(name));
+    }
 }

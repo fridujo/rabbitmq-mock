@@ -17,6 +17,7 @@ import com.rabbitmq.client.ReturnCallback;
 import com.rabbitmq.client.ReturnListener;
 import com.rabbitmq.client.ShutdownListener;
 import com.rabbitmq.client.ShutdownSignalException;
+import com.rabbitmq.client.impl.AMQImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -153,58 +154,71 @@ public class MockChannel implements Channel {
     }
 
     @Override
-    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, String type) throws IOException {
+    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, String type) {
         return exchangeDeclare(exchange, type, false, true, false, Collections.emptyMap());
     }
 
     @Override
-    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, BuiltinExchangeType type) throws IOException {
-        return exchangeDeclare(exchange, type, false, true, false, Collections.emptyMap());
+    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, BuiltinExchangeType type) {
+        return exchangeDeclare(exchange, type, false);
     }
 
     @Override
-    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, String type, boolean durable) throws IOException {
-        return exchangeDeclare(exchange, type, durable, true, false, Collections.emptyMap());
+    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, String type, boolean durable) {
+        return exchangeDeclare(exchange, type, durable, true, Collections.emptyMap());
     }
 
     @Override
-    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, BuiltinExchangeType type, boolean durable) throws IOException {
-        return exchangeDeclare(exchange, type, durable, true, false, Collections.emptyMap());
+    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, BuiltinExchangeType type, boolean durable) {
+        return exchangeDeclare(exchange, type, durable, true, Collections.emptyMap());
     }
 
     @Override
-    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, String type, boolean durable, boolean autoDelete, Map<String, Object> arguments) throws IOException {
+    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, String type, boolean durable, boolean autoDelete, Map<String, Object> arguments) {
         return exchangeDeclare(exchange, type, durable, autoDelete, false, arguments);
     }
 
     @Override
-    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, BuiltinExchangeType type, boolean durable, boolean autoDelete, Map<String, Object> arguments) throws IOException {
+    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, BuiltinExchangeType type, boolean durable, boolean autoDelete, Map<String, Object> arguments) {
         return exchangeDeclare(exchange, type, durable, autoDelete, false, arguments);
     }
 
     @Override
     public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, String type, boolean durable, boolean autoDelete, boolean internal, Map<String, Object> arguments) {
-        return node.exchangeDeclare(exchange, type, durable, autoDelete, internal, arguments);
+        return node.exchangeDeclare(exchange, type, durable, autoDelete, internal, nullToEmpty(arguments));
     }
 
     @Override
-    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, BuiltinExchangeType type, boolean durable, boolean autoDelete, boolean internal, Map<String, Object> arguments) throws IOException {
+    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, BuiltinExchangeType type, boolean durable, boolean autoDelete, boolean internal, Map<String, Object> arguments) {
         return exchangeDeclare(exchange, type.getType(), durable, autoDelete, internal, arguments);
     }
 
     @Override
     public void exchangeDeclareNoWait(String exchange, String type, boolean durable, boolean autoDelete, boolean internal, Map<String, Object> arguments) {
-        throw new UnsupportedOperationException();
+        exchangeDeclare(exchange, type, durable, autoDelete, internal, arguments);
     }
 
     @Override
     public void exchangeDeclareNoWait(String exchange, BuiltinExchangeType type, boolean durable, boolean autoDelete, boolean internal, Map<String, Object> arguments) {
-        throw new UnsupportedOperationException();
+        exchangeDeclareNoWait(exchange, type.getType(), durable, autoDelete, internal, arguments);
     }
 
     @Override
-    public AMQP.Exchange.DeclareOk exchangeDeclarePassive(String name) {
-        throw new UnsupportedOperationException();
+    public AMQP.Exchange.DeclareOk exchangeDeclarePassive(String name) throws IOException {
+        if (!node.getExchange(name).isPresent()) {
+            throw new IOException(new ShutdownSignalException(
+                false,
+                false,
+                new AMQImpl.Channel.Close(
+                    404,
+                    "NOT_FOUND",
+                    AMQImpl.Exchange.INDEX,
+                    AMQImpl.Exchange.Declare.INDEX),
+                null,
+                "no exchange '" + name + "' in vhost '/' ",
+                null));
+        }
+        return new AMQImpl.Exchange.DeclareOk();
     }
 
     @Override
@@ -549,5 +563,9 @@ public class MockChannel implements Channel {
     @Override
     public boolean isOpen() {
         return opened.get();
+    }
+
+    private Map<String, Object> nullToEmpty(Map<String, Object> arguments) {
+        return arguments != null ? arguments : Collections.emptyMap();
     }
 }
