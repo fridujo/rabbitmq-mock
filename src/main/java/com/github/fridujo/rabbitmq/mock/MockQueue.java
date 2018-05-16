@@ -19,10 +19,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class MockQueue {
+public class MockQueue implements Receiver {
     private static final Logger LOGGER = LoggerFactory.getLogger(MockQueue.class);
 
     private final String name;
+    private final ReceiverPointer pointer;
     private final List<ConsumerAndTag> consumers = new ArrayList<>();
     private final AtomicInteger sequence = new AtomicInteger();
     private final Queue<Message> messages = new LinkedList<>();
@@ -31,6 +32,7 @@ public class MockQueue {
 
     public MockQueue(String name) {
         this.name = name;
+        this.pointer = new ReceiverPointer(ReceiverPointer.Type.QUEUE, name);
         start();
     }
 
@@ -87,6 +89,11 @@ public class MockQueue {
             props,
             body
         ));
+    }
+
+    @Override
+    public ReceiverPointer pointer() {
+        return pointer;
     }
 
     public void addConsumer(String consumerTag, Consumer consumer, boolean autoAck) {

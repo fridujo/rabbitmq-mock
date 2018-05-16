@@ -3,6 +3,7 @@ package com.github.fridujo.rabbitmq.mock;
 import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.GetResponse;
 import com.rabbitmq.client.ShutdownSignalException;
 import org.junit.jupiter.api.Test;
 
@@ -115,6 +116,44 @@ class ChannelTest {
                 channel.exchangeDeleteNoWait("test1", false);
                 assertThatExceptionOfType(IOException.class)
                     .isThrownBy(() -> channel.exchangeDeclarePassive("test1"));
+            }
+        }
+    }
+
+    @Test
+    void exchangeBind_binds_two_exchanges() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                assertThat(channel.exchangeDeclare("ex-from", BuiltinExchangeType.FANOUT)).isNotNull();
+                assertThat(channel.exchangeDeclare("ex-to", BuiltinExchangeType.FANOUT)).isNotNull();
+                assertThat(channel.queueDeclare()).isNotNull();
+
+                assertThat(channel.exchangeBind("ex-to", "ex-from", "test.key")).isNotNull();
+                assertThat(channel.queueBind("", "ex-to", "queue.used")).isNotNull();
+
+                channel.basicPublish("ex-from", "unused", null, "test message".getBytes());
+                GetResponse response = channel.basicGet("", false);
+                assertThat(response).isNotNull();
+                assertThat(new String(response.getBody())).isEqualTo("test message");
+            }
+        }
+    }
+
+    @Test
+    void exchangeBindNoWait_binds_two_exchanges() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                assertThat(channel.exchangeDeclare("ex-from", BuiltinExchangeType.FANOUT)).isNotNull();
+                assertThat(channel.exchangeDeclare("ex-to", BuiltinExchangeType.FANOUT)).isNotNull();
+                assertThat(channel.queueDeclare()).isNotNull();
+
+                channel.exchangeBindNoWait("ex-to", "ex-from", "test.key", null);
+                assertThat(channel.queueBind("", "ex-to", "queue.used")).isNotNull();
+
+                channel.basicPublish("ex-from", "unused", null, "test message".getBytes());
+                GetResponse response = channel.basicGet("", true);
+                assertThat(response).isNotNull();
+                assertThat(new String(response.getBody())).isEqualTo("test message");
             }
         }
     }
