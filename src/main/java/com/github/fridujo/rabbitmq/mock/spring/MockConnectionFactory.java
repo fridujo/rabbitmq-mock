@@ -1,6 +1,5 @@
 package com.github.fridujo.rabbitmq.mock.spring;
 
-import com.github.fridujo.rabbitmq.mock.MockNode;
 import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.rabbit.connection.Connection;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
@@ -11,12 +10,12 @@ import java.util.concurrent.CopyOnWriteArraySet;
 
 public class MockConnectionFactory implements ConnectionFactory {
 
-    private final MockNode node = new MockNode();
+    private final com.github.fridujo.rabbitmq.mock.MockConnectionFactory mockConnectionFactory = new com.github.fridujo.rabbitmq.mock.MockConnectionFactory();
     private final Set<ConnectionListener> connectionListeners = new CopyOnWriteArraySet<>();
 
     @Override
     public Connection createConnection() throws AmqpException {
-        Connection connection = new MockConnection(node, connectionListeners);
+        Connection connection = new MockConnection(mockConnectionFactory.newConnection(), connectionListeners);
         connectionListeners.forEach(connectionListener -> connectionListener.onCreate(connection));
         return connection;
     }
