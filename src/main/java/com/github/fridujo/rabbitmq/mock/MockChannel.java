@@ -30,16 +30,18 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class MockChannel implements Channel {
     private static final Logger LOGGER = LoggerFactory.getLogger(MockChannel.class);
 
+    private final int channelNumber;
     private final MockNode node;
     private final AtomicBoolean opened = new AtomicBoolean(true);
 
-    public MockChannel(MockNode node) {
+    public MockChannel(int channelNumber, MockNode node) {
+        this.channelNumber = channelNumber;
         this.node = node;
     }
 
     @Override
     public int getChannelNumber() {
-        throw new UnsupportedOperationException();
+        return channelNumber;
     }
 
     @Override
