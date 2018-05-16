@@ -124,17 +124,17 @@ public class MockChannel implements Channel {
 
     @Override
     public void basicQos(int prefetchSize, int prefetchCount, boolean global) {
-        throw new UnsupportedOperationException();
     }
 
     @Override
     public void basicQos(int prefetchCount, boolean global) {
-        throw new UnsupportedOperationException();
+        basicQos(0, prefetchCount, true);
     }
 
     @Override
     public void basicQos(int prefetchCount) {
         // Called when BlockingQueueConsumer#start
+        basicQos(prefetchCount, true);
     }
 
     @Override
