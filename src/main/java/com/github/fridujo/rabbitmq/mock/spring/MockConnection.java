@@ -1,7 +1,5 @@
 package com.github.fridujo.rabbitmq.mock.spring;
 
-import com.github.fridujo.rabbitmq.mock.MockChannel;
-import com.github.fridujo.rabbitmq.mock.MockNode;
 import com.rabbitmq.client.AlreadyClosedException;
 import com.rabbitmq.client.BlockedListener;
 import com.rabbitmq.client.Channel;
@@ -16,20 +14,20 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 class MockConnection implements Connection {
 
-    private final MockNode node;
+    private final com.github.fridujo.rabbitmq.mock.MockConnection connection;
     private final Set<ConnectionListener> connectionListeners;
 
     private AtomicBoolean opened = new AtomicBoolean(true);
 
-    MockConnection(MockNode node, Set<ConnectionListener> connectionListeners) {
-        this.node = node;
+    MockConnection(com.github.fridujo.rabbitmq.mock.MockConnection mockConnection, Set<ConnectionListener> connectionListeners) {
+        this.connection = mockConnection;
         this.connectionListeners = connectionListeners;
     }
 
     @Override
     public Channel createChannel(boolean transactional) throws AmqpException {
-        if (opened.get()) {
-            return new MockChannel(node);
+        if (connection.isOpen()) {
+            return connection.createChannel();
         } else {
             throw RabbitExceptionTranslator.convertRabbitAccessException(
                 new AlreadyClosedException(new ShutdownSignalException(false, true, null, this)));
