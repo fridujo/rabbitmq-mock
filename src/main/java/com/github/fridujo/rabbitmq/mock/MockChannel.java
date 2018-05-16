@@ -36,6 +36,10 @@ public class MockChannel implements Channel {
     private final MockNode node;
     private final MockConnection mockConnection;
     private final AtomicBoolean opened = new AtomicBoolean(true);
+    private final RandomStringGenerator queueNameGenerator = new RandomStringGenerator(
+        "amq.gen-",
+        "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+        22);
 
     private String lastGeneratedQueueName;
 
@@ -575,7 +579,7 @@ public class MockChannel implements Channel {
     private String generateIfEmpty(String queue) {
         final String definitiveQueueName;
         if ("".equals(queue)) {
-            definitiveQueueName = "amq.gen-" + UUID.randomUUID().toString();
+            definitiveQueueName = queueNameGenerator.generate();
             this.lastGeneratedQueueName = definitiveQueueName;
         } else {
             definitiveQueueName = queue;
