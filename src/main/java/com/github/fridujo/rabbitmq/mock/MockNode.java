@@ -7,7 +7,6 @@ import com.rabbitmq.client.impl.AMQImpl;
 
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class MockNode implements ReceiverRegistry {
@@ -16,6 +15,10 @@ public class MockNode implements ReceiverRegistry {
     private final MockQueue unroutedQueue = new MockQueue("unrouted");
     private final Map<String, MockExchange> exchanges = new ConcurrentHashMap<>();
     private final Map<String, MockQueue> queues = new ConcurrentHashMap<>();
+    private final RandomStringGenerator consumerTagGenerator = new RandomStringGenerator(
+        "amq.ctag-",
+        "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+        22);
 
 
     public MockNode() {
@@ -35,7 +38,7 @@ public class MockNode implements ReceiverRegistry {
     public String basicConsume(String queueName, boolean autoAck, String consumerTag, boolean noLocal, boolean exclusive, Map<String, Object> arguments, Consumer callback) {
         final String definitiveConsumerTag;
         if ("".equals(consumerTag)) {
-            definitiveConsumerTag = "amq.ctag-test" + UUID.randomUUID();
+            definitiveConsumerTag = consumerTagGenerator.generate();
         } else {
             definitiveConsumerTag = consumerTag;
         }
