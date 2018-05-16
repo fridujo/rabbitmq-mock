@@ -50,4 +50,13 @@ class ChannelTest {
             }
         }
     }
+
+    @Test
+    void basicQos_does_not_throw() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                channel.basicQos(30);
+            }
+        }
+    }
 }
