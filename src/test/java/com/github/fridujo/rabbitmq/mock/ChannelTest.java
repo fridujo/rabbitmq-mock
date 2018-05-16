@@ -197,4 +197,26 @@ class ChannelTest {
             }
         }
     }
+
+    @Test
+    void queueDeclareNoWait_declares_it() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                channel.queueDeclareNoWait("", true, false, false, null);
+                assertThat(channel.queueDeclarePassive("")).isNotNull();
+            }
+        }
+    }
+
+    @Test
+    void queueDeclarePassive_throws_when_not_existing() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                assertThatExceptionOfType(IOException.class)
+                    .isThrownBy(() -> channel.queueDeclarePassive("test1"))
+                    .withMessage("com.rabbitmq.client.ShutdownSignalException: no queue 'test1' in vhost '/' channel error; protocol method: #method<channel.close>(reply-code=404, reply-text=NOT_FOUND, class-id=50, method-id=10)")
+                    .withCauseExactlyInstanceOf(ShutdownSignalException.class);
+            }
+        }
+    }
 }
