@@ -3,16 +3,12 @@ package com.github.fridujo.rabbitmq.mock;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.DefaultConsumer;
 import com.rabbitmq.client.Envelope;
 import com.rabbitmq.client.GetResponse;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -28,15 +24,7 @@ class IntegrationTest {
         String exchangeName = "test-exchange";
         String routingKey = "test.key";
 
-        ConnectionFactory factory = new MockConnectionFactory();
-
-        factory.setUsername("guest");
-        factory.setPassword("guest");
-        factory.setVirtualHost("/");
-        factory.setHost("localhost");
-        factory.setPort(5672);
-
-        try (Connection conn = factory.newConnection()) {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
             assertThat(conn).isInstanceOf(MockConnection.class);
 
             try (Channel channel = conn.createChannel()) {
@@ -47,17 +35,13 @@ class IntegrationTest {
                 channel.queueBind(queueName, exchangeName, routingKey);
 
                 List<String> messages = new ArrayList<>();
-                boolean autoAck = false;
-                channel.basicConsume(queueName, autoAck, "myConsumerTag",
+                channel.basicConsume(queueName, false, "myConsumerTag",
                     new DefaultConsumer(channel) {
                         @Override
                         public void handleDelivery(String consumerTag,
                                                    Envelope envelope,
                                                    AMQP.BasicProperties properties,
-                                                   byte[] body)
-                            throws IOException {
-                            String routingKey = envelope.getRoutingKey();
-                            String contentType = properties.getContentType();
+                                                   byte[] body) throws IOException {
                             long deliveryTag = envelope.getDeliveryTag();
                             messages.add(new String(body));
                             // (process the message components here ...)
@@ -76,15 +60,11 @@ class IntegrationTest {
     }
 
     @Test
-    void basic_get_case() throws IOException, TimeoutException, NoSuchAlgorithmException, KeyManagementException, URISyntaxException {
+    void basic_get_case() throws IOException, TimeoutException {
         String exchangeName = "test-exchange";
         String routingKey = "test.key";
 
-        ConnectionFactory factory = new MockConnectionFactory();
-
-        factory.setUri("amqp://userName:password@hostName:portNumber/virtualHost");
-
-        try (Connection conn = factory.newConnection()) {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
             assertThat(conn).isInstanceOf(MockConnection.class);
 
             try (Channel channel = conn.createChannel()) {
@@ -97,12 +77,10 @@ class IntegrationTest {
                 byte[] messageBodyBytes = "Hello, world!".getBytes();
                 channel.basicPublish(exchangeName, routingKey, null, messageBodyBytes);
 
-                boolean autoAck = false;
-                GetResponse response = channel.basicGet(queueName, autoAck);
+                GetResponse response = channel.basicGet(queueName, false);
                 if (response == null) {
                     fail("AMQP GetReponse must not be null");
                 } else {
-                    AMQP.BasicProperties props = response.getProps();
                     byte[] body = response.getBody();
                     assertThat(new String(body)).isEqualTo("Hello, world!");
                     long deliveryTag = response.getEnvelope().getDeliveryTag();
