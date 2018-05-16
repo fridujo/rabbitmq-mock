@@ -310,17 +310,17 @@ public class MockChannel implements Channel {
 
     @Override
     public AMQP.Queue.DeleteOk queueDelete(String queue) {
-        throw new UnsupportedOperationException();
+        return queueDelete(queue, false, false);
     }
 
     @Override
     public AMQP.Queue.DeleteOk queueDelete(String queue, boolean ifUnused, boolean ifEmpty) {
-        throw new UnsupportedOperationException();
+        return node.queueDelete(lastGeneratedIfEmpty(queue), ifUnused, ifEmpty);
     }
 
     @Override
     public void queueDeleteNoWait(String queue, boolean ifUnused, boolean ifEmpty) {
-        throw new UnsupportedOperationException();
+        queueDelete(queue, ifUnused, ifEmpty);
     }
 
     @Override
