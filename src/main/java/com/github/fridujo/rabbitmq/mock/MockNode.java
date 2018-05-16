@@ -69,6 +69,13 @@ public class MockNode implements ReceiverRegistry {
         return new AMQImpl.Exchange.BindOk();
     }
 
+    public AMQP.Exchange.UnbindOk exchangeUnbind(String destinationName, String sourceName, String routingKey, Map<String, Object> arguments) {
+        MockExchange source = getExchangeUnchecked(sourceName);
+        MockExchange destination = getExchangeUnchecked(destinationName);
+        source.unbind(destination.pointer(), routingKey);
+        return new AMQImpl.Exchange.UnbindOk();
+    }
+
     public AMQP.Queue.DeclareOk queueDeclare(String queue, boolean durable, boolean exclusive, boolean autoDelete, Map<String, Object> arguments) {
         queues.putIfAbsent(queue, new MockQueue(queue));
         return new AMQP.Queue.DeclareOk.Builder()
