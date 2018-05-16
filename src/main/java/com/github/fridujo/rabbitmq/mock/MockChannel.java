@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -284,15 +285,27 @@ public class MockChannel implements Channel {
 
     @Override
     public void queueDeclareNoWait(String queue, boolean durable, boolean exclusive, boolean autoDelete, Map<String, Object> arguments) {
-        throw new UnsupportedOperationException();
+        queueDeclare(queue, durable, exclusive, autoDelete, arguments);
     }
 
     @Override
-    public AMQP.Queue.DeclareOk queueDeclarePassive(String queue) throws IOException {
-        if (!node.getQueue(queue).isPresent()) {
-            throw new IOException("No queue named " + queue);
+    public AMQP.Queue.DeclareOk queueDeclarePassive(String queueName) throws IOException {
+        String definitiveQueueName = lastGeneratedIfEmpty(queueName);
+        Optional<MockQueue> queue = node.getQueue(definitiveQueueName);
+        if (!queue.isPresent()) {
+            throw new IOException(new ShutdownSignalException(
+                false,
+                false,
+                new AMQImpl.Channel.Close(
+                    404,
+                    "NOT_FOUND",
+                    AMQImpl.Queue.INDEX,
+                    AMQImpl.Queue.Declare.INDEX),
+                null,
+                "no queue '" + definitiveQueueName + "' in vhost '/' ",
+                null));
         }
-        return null;
+        return new AMQImpl.Queue.DeclareOk(definitiveQueueName, queue.get().messageCount(), queue.get().consumerCount());
     }
 
     @Override

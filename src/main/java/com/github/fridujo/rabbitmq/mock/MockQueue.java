@@ -122,6 +122,14 @@ public class MockQueue implements Receiver {
         }
     }
 
+    public int messageCount() {
+        return messages.size();
+    }
+
+    public int consumerCount() {
+        return consumers.size();
+    }
+
     static class ConsumerAndTag {
         private final String tag;
         private final Consumer consumer;
