@@ -357,7 +357,7 @@ public class MockChannel implements Channel {
 
     @Override
     public GetResponse basicGet(String queue, boolean autoAck) {
-        return node.basicGet(lastGeneratedIfEmpty(queue), autoAck);
+        return node.basicGet(lastGeneratedIfEmpty(queue), autoAck, this::nextDeliveryTag);
     }
 
     @Override
@@ -483,12 +483,12 @@ public class MockChannel implements Channel {
 
     @Override
     public AMQP.Basic.RecoverOk basicRecover() {
-        throw new UnsupportedOperationException();
+        return basicRecover(true);
     }
 
     @Override
     public AMQP.Basic.RecoverOk basicRecover(boolean requeue) {
-        throw new UnsupportedOperationException();
+        return node.basicRecover(true);
     }
 
     @Override

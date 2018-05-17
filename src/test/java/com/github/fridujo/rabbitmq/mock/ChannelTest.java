@@ -380,4 +380,26 @@ class ChannelTest {
             }
         }
     }
+
+    @Test
+    void basicRecover_requeue_all_unacked_messages() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                String queueName = channel.queueDeclare().getQueue();
+                channel.basicPublish("", queueName, null, "test message 1".getBytes());
+                channel.basicPublish("", queueName, null, "test message 2".getBytes());
+
+                assertThat(channel.messageCount(queueName)).isEqualTo(2);
+
+                assertThat(channel.basicGet("", false)).isNotNull();
+                assertThat(channel.basicGet("", false)).isNotNull();
+
+                assertThat(channel.messageCount(queueName)).isEqualTo(0);
+
+                assertThat(channel.basicRecover()).isNotNull();
+
+                assertThat(channel.messageCount(queueName)).isEqualTo(2);
+            }
+        }
+    }
 }

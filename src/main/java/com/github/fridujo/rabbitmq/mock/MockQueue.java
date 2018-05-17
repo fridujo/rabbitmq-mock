@@ -77,11 +77,6 @@ public class MockQueue implements Receiver {
         return delivered;
     }
 
-
-    private long createDeliveryTag() {
-        return System.currentTimeMillis() + name.hashCode();
-    }
-
     public void publish(String exchangeName, String routingKey, AMQP.BasicProperties props, byte[] body) {
         messages.offer(new Message(
             exchangeName,
@@ -101,8 +96,8 @@ public class MockQueue implements Receiver {
         consumer.handleConsumeOk(consumerTag);
     }
 
-    public GetResponse basicGet(boolean autoAck) {
-        long deliveryTag = createDeliveryTag();
+    public GetResponse basicGet(boolean autoAck, Supplier<Long> deliveryTagSupplier) {
+        long deliveryTag = deliveryTagSupplier.get();
         Message message = messages.poll();
         if (message != null) {
             if (!autoAck) {
@@ -156,6 +151,12 @@ public class MockQueue implements Receiver {
             }
             consumer.handleCancelOk(consumerTag);
         }
+    }
+
+    public void basicRecover(boolean requeue) {
+        Set<Long> unackedDeliveryTags = new LinkedHashSet<>(unackedMessagesByDeliveryTag.keySet());
+        unackedDeliveryTags.forEach(unackedDeliveryTag -> messages.offer(unackedMessagesByDeliveryTag.remove(unackedDeliveryTag)));
+        consumersByTag.values().forEach(consumerAndTag -> consumerAndTag.consumer.handleRecoverOk(consumerAndTag.tag));
     }
 
     public int messageCount() {
