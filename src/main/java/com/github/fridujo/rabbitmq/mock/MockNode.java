@@ -8,6 +8,7 @@ import com.rabbitmq.client.impl.AMQImpl;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 public class MockNode implements ReceiverRegistry {
 
@@ -35,7 +36,7 @@ public class MockNode implements ReceiverRegistry {
         exchanges.get(exchange).publish(null, routingKey, nonNullProperties, body);
     }
 
-    public String basicConsume(String queueName, boolean autoAck, String consumerTag, boolean noLocal, boolean exclusive, Map<String, Object> arguments, Consumer callback) {
+    public String basicConsume(String queueName, boolean autoAck, String consumerTag, boolean noLocal, boolean exclusive, Map<String, Object> arguments, Consumer callback, Supplier<Long> deliveryTagSupplier) {
         final String definitiveConsumerTag;
         if ("".equals(consumerTag)) {
             definitiveConsumerTag = consumerTagGenerator.generate();
@@ -43,7 +44,7 @@ public class MockNode implements ReceiverRegistry {
             definitiveConsumerTag = consumerTag;
         }
 
-        getQueueUnchecked(queueName).addConsumer(definitiveConsumerTag, callback, autoAck);
+        getQueueUnchecked(queueName).basicConsume(definitiveConsumerTag, callback, autoAck, deliveryTagSupplier);
 
         return definitiveConsumerTag;
     }
@@ -118,6 +119,9 @@ public class MockNode implements ReceiverRegistry {
         queues.values().forEach(q -> q.basicReject(deliveryTag, requeue));
     }
 
+    public void basicCancel(String consumerTag) {
+        queues.values().forEach(q -> q.basicCancel(consumerTag));
+    }
 
     @Override
     public Receiver getReceiver(ReceiverPointer receiverPointer) {

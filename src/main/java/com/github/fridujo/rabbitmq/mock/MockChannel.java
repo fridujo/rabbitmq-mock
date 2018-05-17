@@ -28,6 +28,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class MockChannel implements Channel {
     private static final Logger LOGGER = LoggerFactory.getLogger(MockChannel.class);
@@ -36,6 +37,7 @@ public class MockChannel implements Channel {
     private final MockNode node;
     private final MockConnection mockConnection;
     private final AtomicBoolean opened = new AtomicBoolean(true);
+    private final AtomicLong deliveryTagSequence = new AtomicLong();
     private final RandomStringGenerator queueNameGenerator = new RandomStringGenerator(
         "amq.gen-",
         "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
@@ -375,108 +377,108 @@ public class MockChannel implements Channel {
 
     @Override
     public String basicConsume(String queue, Consumer callback) {
-        throw new UnsupportedOperationException();
+        return basicConsume(queue, false, callback);
     }
 
     @Override
     public String basicConsume(String queue, DeliverCallback deliverCallback, CancelCallback cancelCallback) {
-        throw new UnsupportedOperationException();
+        return basicConsume(queue, false, deliverCallback, cancelCallback);
     }
 
     @Override
     public String basicConsume(String queue, DeliverCallback deliverCallback, ConsumerShutdownSignalCallback shutdownSignalCallback) {
-        throw new UnsupportedOperationException();
+        return basicConsume(queue, false, deliverCallback, shutdownSignalCallback);
     }
 
     @Override
     public String basicConsume(String queue, DeliverCallback deliverCallback, CancelCallback cancelCallback, ConsumerShutdownSignalCallback shutdownSignalCallback) {
-        throw new UnsupportedOperationException();
+        return basicConsume(queue, false, deliverCallback, cancelCallback, shutdownSignalCallback);
     }
 
     @Override
     public String basicConsume(String queue, boolean autoAck, Consumer callback) {
-        throw new UnsupportedOperationException();
+        return basicConsume(queue, autoAck, Collections.emptyMap(), callback);
     }
 
     @Override
     public String basicConsume(String queue, boolean autoAck, DeliverCallback deliverCallback, CancelCallback cancelCallback) {
-        throw new UnsupportedOperationException();
+        return basicConsume(queue, autoAck, Collections.emptyMap(), deliverCallback, cancelCallback);
     }
 
     @Override
     public String basicConsume(String queue, boolean autoAck, DeliverCallback deliverCallback, ConsumerShutdownSignalCallback shutdownSignalCallback) {
-        throw new UnsupportedOperationException();
+        return basicConsume(queue, autoAck, Collections.emptyMap(), deliverCallback, shutdownSignalCallback);
     }
 
     @Override
     public String basicConsume(String queue, boolean autoAck, DeliverCallback deliverCallback, CancelCallback cancelCallback, ConsumerShutdownSignalCallback shutdownSignalCallback) {
-        throw new UnsupportedOperationException();
+        return basicConsume(queue, autoAck, Collections.emptyMap(), deliverCallback, cancelCallback, shutdownSignalCallback);
     }
 
     @Override
-    public String basicConsume(String queue, boolean autoAck, Map<String, Object> arguments, Consumer callback) throws IOException {
+    public String basicConsume(String queue, boolean autoAck, Map<String, Object> arguments, Consumer callback) {
         return basicConsume(queue, autoAck, "", false, false, arguments, callback);
     }
 
     @Override
     public String basicConsume(String queue, boolean autoAck, Map<String, Object> arguments, DeliverCallback deliverCallback, CancelCallback cancelCallback) {
-        throw new UnsupportedOperationException();
+        return basicConsume(queue, autoAck, arguments, deliverCallback, cancelCallback, null);
     }
 
     @Override
     public String basicConsume(String queue, boolean autoAck, Map<String, Object> arguments, DeliverCallback deliverCallback, ConsumerShutdownSignalCallback shutdownSignalCallback) {
-        throw new UnsupportedOperationException();
+        return basicConsume(queue, autoAck, arguments, deliverCallback, null, shutdownSignalCallback);
     }
 
     @Override
     public String basicConsume(String queue, boolean autoAck, Map<String, Object> arguments, DeliverCallback deliverCallback, CancelCallback cancelCallback, ConsumerShutdownSignalCallback shutdownSignalCallback) {
-        throw new UnsupportedOperationException();
+        return basicConsume(queue, autoAck, "", false, false, arguments, deliverCallback, cancelCallback, shutdownSignalCallback);
     }
 
     @Override
-    public String basicConsume(String queue, boolean autoAck, String consumerTag, Consumer callback) throws IOException {
+    public String basicConsume(String queue, boolean autoAck, String consumerTag, Consumer callback) {
         return basicConsume(queue, autoAck, consumerTag, false, false, Collections.emptyMap(), callback);
     }
 
     @Override
     public String basicConsume(String queue, boolean autoAck, String consumerTag, DeliverCallback deliverCallback, CancelCallback cancelCallback) {
-        throw new UnsupportedOperationException();
+        return basicConsume(queue, autoAck, consumerTag, deliverCallback, cancelCallback, null);
     }
 
     @Override
     public String basicConsume(String queue, boolean autoAck, String consumerTag, DeliverCallback deliverCallback, ConsumerShutdownSignalCallback shutdownSignalCallback) {
-        throw new UnsupportedOperationException();
+        return basicConsume(queue, autoAck, consumerTag, deliverCallback, null, shutdownSignalCallback);
     }
 
     @Override
     public String basicConsume(String queue, boolean autoAck, String consumerTag, DeliverCallback deliverCallback, CancelCallback cancelCallback, ConsumerShutdownSignalCallback shutdownSignalCallback) {
-        throw new UnsupportedOperationException();
+        return basicConsume(queue, autoAck, consumerTag, false, false, Collections.emptyMap(), deliverCallback, cancelCallback, shutdownSignalCallback);
     }
 
     @Override
     public String basicConsume(String queue, boolean autoAck, String consumerTag, boolean noLocal, boolean exclusive, Map<String, Object> arguments, Consumer callback) {
-        return node.basicConsume(queue, autoAck, consumerTag, noLocal, exclusive, arguments, callback);
+        return node.basicConsume(lastGeneratedIfEmpty(queue), autoAck, consumerTag, noLocal, exclusive, nullToEmpty(arguments), callback, this::nextDeliveryTag);
     }
 
     @Override
     public String basicConsume(String queue, boolean autoAck, String consumerTag, boolean noLocal, boolean exclusive, Map<String, Object> arguments, DeliverCallback deliverCallback, CancelCallback cancelCallback) {
-        throw new UnsupportedOperationException();
+        return basicConsume(queue, autoAck, consumerTag, noLocal, exclusive, arguments, deliverCallback, cancelCallback, null);
     }
 
     @Override
     public String basicConsume(String queue, boolean autoAck, String consumerTag, boolean noLocal, boolean exclusive, Map<String, Object> arguments, DeliverCallback deliverCallback, ConsumerShutdownSignalCallback shutdownSignalCallback) {
-        throw new UnsupportedOperationException();
+        return basicConsume(queue, autoAck, consumerTag, noLocal, exclusive, arguments, deliverCallback, null, shutdownSignalCallback);
     }
 
     @Override
     public String basicConsume(String queue, boolean autoAck, String consumerTag, boolean noLocal, boolean exclusive, Map<String, Object> arguments, DeliverCallback deliverCallback, CancelCallback cancelCallback, ConsumerShutdownSignalCallback shutdownSignalCallback) {
-        throw new UnsupportedOperationException();
+        return basicConsume(queue, autoAck, consumerTag, noLocal, exclusive, arguments, new ConsumerWrapper(deliverCallback, cancelCallback, shutdownSignalCallback));
     }
 
     @Override
     public void basicCancel(String consumerTag) {
         // Called when BlockingQueueConsumer#basicCancel (after AbstractMessageListenerContainer#stop)
-        LOGGER.info("Cancelled consumer " + consumerTag);
+        node.basicCancel(consumerTag);
     }
 
     @Override
@@ -601,5 +603,9 @@ public class MockChannel implements Channel {
 
     private String lastGeneratedIfEmpty(String queue) {
         return "".equals(queue) ? Objects.requireNonNull(lastGeneratedQueueName, "No server-named queue previously created") : queue;
+    }
+
+    private long nextDeliveryTag() {
+        return deliveryTagSequence.incrementAndGet();
     }
 }
