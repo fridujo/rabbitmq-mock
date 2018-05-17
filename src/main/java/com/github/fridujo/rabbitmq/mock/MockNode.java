@@ -102,9 +102,9 @@ public class MockNode implements ReceiverRegistry {
         return new AMQImpl.Queue.PurgeOk(messageCount);
     }
 
-    public GetResponse basicGet(String queueName, boolean autoAck) {
+    public GetResponse basicGet(String queueName, boolean autoAck, Supplier<Long> deliveryTagSupplier) {
         MockQueue queue = getQueueUnchecked(queueName);
-        return queue.basicGet(autoAck);
+        return queue.basicGet(autoAck, deliveryTagSupplier);
     }
 
     public void basicAck(long deliveryTag, boolean multiple) {
@@ -121,6 +121,11 @@ public class MockNode implements ReceiverRegistry {
 
     public void basicCancel(String consumerTag) {
         queues.values().forEach(q -> q.basicCancel(consumerTag));
+    }
+
+    public AMQP.Basic.RecoverOk basicRecover(boolean requeue) {
+        queues.values().forEach(q -> q.basicRecover(requeue));
+        return new AMQImpl.Basic.RecoverOk();
     }
 
     @Override
