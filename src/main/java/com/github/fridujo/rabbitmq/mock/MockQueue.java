@@ -8,11 +8,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
@@ -20,13 +20,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 public class MockQueue implements Receiver {
     private static final Logger LOGGER = LoggerFactory.getLogger(MockQueue.class);
 
     private final String name;
     private final ReceiverPointer pointer;
-    private final List<ConsumerAndTag> consumers = new ArrayList<>();
+    private final Map<String, ConsumerAndTag> consumersByTag = new LinkedHashMap<>();
     private final AtomicInteger sequence = new AtomicInteger();
     private final Queue<Message> messages = new LinkedList<>();
     private final Map<Long, Message> unackedMessagesByDeliveryTag = new LinkedHashMap<>();
@@ -49,14 +50,14 @@ public class MockQueue implements Receiver {
 
     private boolean deliverToConsumerIfPossible() {
         boolean delivered = false;
-        if (consumers.size() > 0) {
-            long deliveryTag = createDeliveryTag();
+        if (consumersByTag.size() > 0) {
             Message message = messages.poll();
             if (message != null) {
+                int index = sequence.incrementAndGet() % consumersByTag.size();
+                ConsumerAndTag nextConsumer = new ArrayList<>(consumersByTag.values()).get(index);
+                long deliveryTag = nextConsumer.deliveryTagSupplier.get();
                 unackedMessagesByDeliveryTag.put(deliveryTag, message);
 
-                int index = sequence.incrementAndGet() % consumers.size();
-                ConsumerAndTag nextConsumer = consumers.get(index);
                 Envelope envelope = new Envelope(deliveryTag,
                     false,
                     message.exchangeName,
@@ -69,12 +70,13 @@ public class MockQueue implements Receiver {
                     delivered = true;
                 } catch (IOException e) {
                     LOGGER.warn("Unable to deliver message to consumer [" + nextConsumer.tag + "]");
-                    messages.offer(unackedMessagesByDeliveryTag.remove(deliveryTag));
+                    basicReject(deliveryTag, true);
                 }
             }
         }
         return delivered;
     }
+
 
     private long createDeliveryTag() {
         return System.currentTimeMillis() + name.hashCode();
@@ -94,8 +96,9 @@ public class MockQueue implements Receiver {
         return pointer;
     }
 
-    public void addConsumer(String consumerTag, Consumer consumer, boolean autoAck) {
-        consumers.add(new ConsumerAndTag(consumerTag, consumer, autoAck));
+    public void basicConsume(String consumerTag, Consumer consumer, boolean autoAck, Supplier<Long> deliveryTagSupplier) {
+        consumersByTag.put(consumerTag, new ConsumerAndTag(consumerTag, consumer, autoAck, deliveryTagSupplier));
+        consumer.handleConsumeOk(consumerTag);
     }
 
     public GetResponse basicGet(boolean autoAck) {
@@ -143,12 +146,24 @@ public class MockQueue implements Receiver {
         }
     }
 
+    public void basicCancel(String consumerTag) {
+        if (consumersByTag.containsKey(consumerTag)) {
+            Consumer consumer = consumersByTag.remove(consumerTag).consumer;
+            try {
+                consumer.handleCancel(consumerTag);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+            consumer.handleCancelOk(consumerTag);
+        }
+    }
+
     public int messageCount() {
         return messages.size();
     }
 
     public int consumerCount() {
-        return consumers.size();
+        return consumersByTag.size();
     }
 
     public int purge() {
@@ -174,11 +189,13 @@ public class MockQueue implements Receiver {
         private final String tag;
         private final Consumer consumer;
         private final boolean autoAck;
+        private final Supplier<Long> deliveryTagSupplier;
 
-        ConsumerAndTag(String tag, Consumer consumer, boolean autoAck) {
+        ConsumerAndTag(String tag, Consumer consumer, boolean autoAck, Supplier<Long> deliveryTagSupplier) {
             this.tag = tag;
             this.consumer = consumer;
             this.autoAck = autoAck;
+            this.deliveryTagSupplier = deliveryTagSupplier;
         }
     }
 

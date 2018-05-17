@@ -1,15 +1,22 @@
 package com.github.fridujo.rabbitmq.mock;
 
+import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.DefaultConsumer;
+import com.rabbitmq.client.Envelope;
 import com.rabbitmq.client.GetResponse;
 import com.rabbitmq.client.ShutdownSignalException;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -275,6 +282,101 @@ class ChannelTest {
                 channel.basicReject(getResponse.getEnvelope().getDeliveryTag(), false);
 
                 assertThat(channel.basicGet("", false)).isNull();
+            }
+        }
+    }
+
+    @Test
+    void basicConsume_with_consumer() throws IOException, TimeoutException, InterruptedException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                String queueName = channel.queueDeclare().getQueue();
+                channel.basicPublish("", queueName, null, "test message".getBytes());
+
+                List<String> messages = new ArrayList<>();
+                AtomicBoolean cancelled = new AtomicBoolean();
+                String consumerTag = channel.basicConsume("", new DefaultConsumer(channel) {
+                    @Override
+                    public void handleDelivery(String consumerTag,
+                                               Envelope envelope,
+                                               AMQP.BasicProperties properties,
+                                               byte[] body) {
+                        messages.add(new String(body));
+                    }
+
+                    @Override
+                    public void handleCancelOk(String consumerTag) {
+                        cancelled.set(true);
+                    }
+                });
+
+                TimeUnit.MILLISECONDS.sleep(200L);
+
+                assertThat(messages).hasSize(1);
+                assertThat(cancelled).isFalse();
+                assertThat(channel.consumerCount("")).isEqualTo(1);
+
+                messages.clear();
+                channel.basicCancel(consumerTag);
+
+                assertThat(cancelled).isTrue();
+                assertThat(channel.consumerCount("")).isEqualTo(0);
+
+                channel.basicPublish("", queueName, null, "test message".getBytes());
+                TimeUnit.MILLISECONDS.sleep(50L);
+
+                assertThat(messages).hasSize(0);
+            }
+        }
+    }
+
+    @Test
+    void basicConsume_with_callbacks() throws IOException, TimeoutException, InterruptedException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                String queueName = channel.queueDeclare().getQueue();
+                channel.basicPublish("", queueName, null, "test message".getBytes());
+
+                List<String> messages = new ArrayList<>();
+                AtomicBoolean cancelled = new AtomicBoolean();
+                String consumerTag = channel.basicConsume("",
+                    (ct, delivery) -> messages.add(new String(delivery.getBody())),
+                    ct -> cancelled.set(true));
+
+                TimeUnit.MILLISECONDS.sleep(200L);
+
+                assertThat(messages).hasSize(1);
+                assertThat(cancelled).isFalse();
+
+                messages.clear();
+                channel.basicCancel(consumerTag);
+
+                assertThat(cancelled).isTrue();
+
+                channel.basicPublish("", queueName, null, "test message".getBytes());
+                TimeUnit.MILLISECONDS.sleep(50L);
+
+                assertThat(messages).hasSize(0);
+            }
+        }
+    }
+
+    @Test
+    void basicConsume_with_shutdown_callback() throws IOException, TimeoutException, InterruptedException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                String queueName = channel.queueDeclare().getQueue();
+                channel.basicPublish("", queueName, null, "test message".getBytes());
+
+                List<String> messages = new ArrayList<>();
+                channel.basicConsume("",
+                    (ct, delivery) -> messages.add(new String(delivery.getBody())),
+                    (ct, sig) -> {
+                    });
+
+                TimeUnit.MILLISECONDS.sleep(200L);
+
+                assertThat(messages).hasSize(1);
             }
         }
     }
