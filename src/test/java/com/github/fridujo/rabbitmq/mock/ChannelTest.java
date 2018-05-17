@@ -258,4 +258,24 @@ class ChannelTest {
             }
         }
     }
+
+    @Test
+    void basicNack_with_requeue_replaces_message_in_queue() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                String queueName = channel.queueDeclare().getQueue();
+                channel.basicPublish("", queueName, null, "test message".getBytes());
+
+                GetResponse getResponse = channel.basicGet("", false);
+
+                channel.basicNack(getResponse.getEnvelope().getDeliveryTag(), true, true);
+
+                getResponse = channel.basicGet("", false);
+
+                channel.basicReject(getResponse.getEnvelope().getDeliveryTag(), false);
+
+                assertThat(channel.basicGet("", false)).isNull();
+            }
+        }
+    }
 }

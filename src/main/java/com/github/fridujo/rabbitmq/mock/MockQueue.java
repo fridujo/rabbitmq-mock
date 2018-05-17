@@ -10,10 +10,12 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -27,7 +29,7 @@ public class MockQueue implements Receiver {
     private final List<ConsumerAndTag> consumers = new ArrayList<>();
     private final AtomicInteger sequence = new AtomicInteger();
     private final Queue<Message> messages = new LinkedList<>();
-    private final Map<Long, Message> unackedMessages = new LinkedHashMap<>();
+    private final Map<Long, Message> unackedMessagesByDeliveryTag = new LinkedHashMap<>();
     private final ExecutorService executorService = Executors.newFixedThreadPool(1);
 
     public MockQueue(String name) {
@@ -51,7 +53,7 @@ public class MockQueue implements Receiver {
             long deliveryTag = createDeliveryTag();
             Message message = messages.poll();
             if (message != null) {
-                unackedMessages.put(deliveryTag, message);
+                unackedMessagesByDeliveryTag.put(deliveryTag, message);
 
                 int index = sequence.incrementAndGet() % consumers.size();
                 ConsumerAndTag nextConsumer = consumers.get(index);
@@ -62,12 +64,12 @@ public class MockQueue implements Receiver {
                 try {
                     nextConsumer.consumer.handleDelivery(nextConsumer.tag, envelope, message.props, message.body);
                     if (nextConsumer.autoAck) {
-                        unackedMessages.remove(deliveryTag);
+                        unackedMessagesByDeliveryTag.remove(deliveryTag);
                     }
                     delivered = true;
                 } catch (IOException e) {
                     LOGGER.warn("Unable to deliver message to consumer [" + nextConsumer.tag + "]");
-                    messages.offer(unackedMessages.remove(deliveryTag));
+                    messages.offer(unackedMessagesByDeliveryTag.remove(deliveryTag));
                 }
             }
         }
@@ -76,10 +78,6 @@ public class MockQueue implements Receiver {
 
     private long createDeliveryTag() {
         return System.currentTimeMillis() + name.hashCode();
-    }
-
-    public void basicAck(long deliveryTag) {
-        unackedMessages.remove(deliveryTag);
     }
 
     public void publish(String exchangeName, String routingKey, AMQP.BasicProperties props, byte[] body) {
@@ -105,7 +103,7 @@ public class MockQueue implements Receiver {
         Message message = messages.poll();
         if (message != null) {
             if (!autoAck) {
-                unackedMessages.put(deliveryTag, message);
+                unackedMessagesByDeliveryTag.put(deliveryTag, message);
             }
             Envelope envelope = new Envelope(
                 deliveryTag,
@@ -122,6 +120,29 @@ public class MockQueue implements Receiver {
         }
     }
 
+    public void basicAck(long deliveryTag, boolean multiple) {
+        if (multiple) {
+            doWithUnackedUntil(deliveryTag, unackedMessagesByDeliveryTag::remove);
+        } else {
+            unackedMessagesByDeliveryTag.remove(deliveryTag);
+        }
+    }
+
+    public void basicNack(long deliveryTag, boolean multiple, boolean requeue) {
+        if (multiple) {
+            doWithUnackedUntil(deliveryTag, relevantDeliveryTag -> basicReject(relevantDeliveryTag, requeue));
+        } else {
+            basicReject(deliveryTag, requeue);
+        }
+    }
+
+    public void basicReject(long deliveryTag, boolean requeue) {
+        Message nacked = unackedMessagesByDeliveryTag.remove(deliveryTag);
+        if (requeue) {
+            messages.offer(nacked);
+        }
+    }
+
     public int messageCount() {
         return messages.size();
     }
@@ -134,6 +155,19 @@ public class MockQueue implements Receiver {
         int messageCount = messageCount();
         messages.clear();
         return messageCount;
+    }
+
+    private void doWithUnackedUntil(long maxDeliveryTag, java.util.function.Consumer<Long> doWithRelevantDeliveryTag) {
+        if (unackedMessagesByDeliveryTag.containsKey(maxDeliveryTag)) {
+            Set<Long> storedDeliveryTagsToRemove = new LinkedHashSet<>();
+            for (Long storedDeliveryTag : unackedMessagesByDeliveryTag.keySet()) {
+                storedDeliveryTagsToRemove.add(storedDeliveryTag);
+                if (Long.valueOf(maxDeliveryTag).equals(storedDeliveryTag)) {
+                    break;
+                }
+            }
+            storedDeliveryTagsToRemove.forEach(doWithRelevantDeliveryTag);
+        }
     }
 
     static class ConsumerAndTag {

@@ -101,14 +101,23 @@ public class MockNode implements ReceiverRegistry {
         return new AMQImpl.Queue.PurgeOk(messageCount);
     }
 
-    public void basicAck(long deliveryTag) {
-        queues.values().forEach(q -> q.basicAck(deliveryTag));
-    }
-
     public GetResponse basicGet(String queueName, boolean autoAck) {
         MockQueue queue = getQueueUnchecked(queueName);
         return queue.basicGet(autoAck);
     }
+
+    public void basicAck(long deliveryTag, boolean multiple) {
+        queues.values().forEach(q -> q.basicAck(deliveryTag, multiple));
+    }
+
+    public void basicNack(long deliveryTag, boolean multiple, boolean requeue) {
+        queues.values().forEach(q -> q.basicNack(deliveryTag, multiple, requeue));
+    }
+
+    public void basicReject(long deliveryTag, boolean requeue) {
+        queues.values().forEach(q -> q.basicReject(deliveryTag, requeue));
+    }
+
 
     @Override
     public Receiver getReceiver(ReceiverPointer receiverPointer) {

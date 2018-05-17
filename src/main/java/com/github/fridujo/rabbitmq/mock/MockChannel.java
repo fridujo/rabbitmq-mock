@@ -360,17 +360,17 @@ public class MockChannel implements Channel {
 
     @Override
     public void basicAck(long deliveryTag, boolean multiple) {
-        node.basicAck(deliveryTag);
+        node.basicAck(deliveryTag, multiple);
     }
 
     @Override
     public void basicNack(long deliveryTag, boolean multiple, boolean requeue) {
-        throw new UnsupportedOperationException();
+        node.basicNack(deliveryTag, multiple, requeue);
     }
 
     @Override
     public void basicReject(long deliveryTag, boolean requeue) {
-        throw new UnsupportedOperationException();
+        node.basicReject(deliveryTag, requeue);
     }
 
     @Override
