@@ -159,7 +159,7 @@ public class MockChannel implements Channel {
 
     @Override
     public void basicPublish(String exchange, String routingKey, boolean mandatory, boolean immediate, AMQP.BasicProperties props, byte[] body) {
-        node.basicPublish(exchange, routingKey, mandatory, immediate, props, body);
+        node.basicPublish(exchange, routingKey, mandatory, immediate, nullToEmpty(props), body);
     }
 
     @Override
@@ -586,6 +586,10 @@ public class MockChannel implements Channel {
         return opened.get();
     }
 
+    private AMQP.BasicProperties nullToEmpty(AMQP.BasicProperties props) {
+        return props != null ? props : new AMQP.BasicProperties.Builder().build();
+    }
+    
     private Map<String, Object> nullToEmpty(Map<String, Object> arguments) {
         return arguments != null ? arguments : Collections.emptyMap();
     }
