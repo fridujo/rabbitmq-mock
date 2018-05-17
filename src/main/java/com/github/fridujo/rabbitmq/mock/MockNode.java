@@ -27,13 +27,9 @@ public class MockNode implements ReceiverRegistry {
         queues.put("unrouted", unroutedQueue);
     }
 
-    public void basicPublish(String exchange, String routingKey, boolean mandatory, boolean immediate, AMQP.BasicProperties props, byte[] body) {
-        if (!exchanges.containsKey(exchange)) {
-            throw new IllegalArgumentException("No exchange named " + exchange);
-        }
-        AMQP.BasicProperties nonNullProperties = props != null ? props : new AMQP.BasicProperties.Builder().build();
-
-        exchanges.get(exchange).publish(null, routingKey, nonNullProperties, body);
+    public void basicPublish(String exchangeName, String routingKey, boolean mandatory, boolean immediate, AMQP.BasicProperties props, byte[] body) {
+        MockExchange exchange = getExchangeUnchecked(exchangeName);
+        exchange.publish(null, routingKey, props, body);
     }
 
     public String basicConsume(String queueName, boolean autoAck, String consumerTag, boolean noLocal, boolean exclusive, Map<String, Object> arguments, Consumer callback, Supplier<Long> deliveryTagSupplier) {
