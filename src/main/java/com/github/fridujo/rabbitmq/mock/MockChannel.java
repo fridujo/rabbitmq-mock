@@ -327,27 +327,27 @@ public class MockChannel implements Channel {
 
     @Override
     public AMQP.Queue.BindOk queueBind(String queue, String exchange, String routingKey) {
-        return node.queueBind(lastGeneratedIfEmpty(queue), exchange, routingKey, null);
+        return queueBind(queue, exchange, routingKey, Collections.emptyMap());
     }
 
     @Override
     public AMQP.Queue.BindOk queueBind(String queue, String exchange, String routingKey, Map<String, Object> arguments) {
-        return node.queueBind(queue, exchange, routingKey, arguments);
+        return node.queueBind(lastGeneratedIfEmpty(queue), exchange, routingKey, nullToEmpty(arguments));
     }
 
     @Override
     public void queueBindNoWait(String queue, String exchange, String routingKey, Map<String, Object> arguments) {
-        throw new UnsupportedOperationException();
+        queueBind(queue, exchange, routingKey, arguments);
     }
 
     @Override
     public AMQP.Queue.UnbindOk queueUnbind(String queue, String exchange, String routingKey) {
-        throw new UnsupportedOperationException();
+        return queueUnbind(queue, exchange, routingKey, Collections.emptyMap());
     }
 
     @Override
     public AMQP.Queue.UnbindOk queueUnbind(String queue, String exchange, String routingKey, Map<String, Object> arguments) {
-        throw new UnsupportedOperationException();
+        return node.queueUnbind(lastGeneratedIfEmpty(queue), exchange, routingKey, nullToEmpty(arguments));
     }
 
     @Override
