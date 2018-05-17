@@ -402,4 +402,23 @@ class ChannelTest {
             }
         }
     }
+
+    @Test
+    void queueUnbind_removes_binding() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                assertThat(channel.exchangeDeclare("ex-test", BuiltinExchangeType.FANOUT)).isNotNull();
+                assertThat(channel.queueDeclare()).isNotNull();
+                channel.queueBindNoWait("", "ex-test", "some.key", null);
+
+                channel.basicPublish("ex-test", "unused", null, "test message".getBytes());
+                assertThat(channel.basicGet("", false)).isNotNull();
+
+                assertThat(channel.queueUnbind("", "ex-test", "some.key")).isNotNull();
+
+                channel.basicPublish("ex-test", "unused", null, "test message".getBytes());
+                assertThat(channel.basicGet("", false)).isNull();
+            }
+        }
+    }
 }
