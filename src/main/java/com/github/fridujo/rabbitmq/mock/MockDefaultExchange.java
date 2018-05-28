@@ -2,6 +2,8 @@ package com.github.fridujo.rabbitmq.mock;
 
 import com.rabbitmq.client.AMQP;
 
+import java.util.Map;
+
 class MockDefaultExchange implements MockExchange {
     private final MockNode node;
 
@@ -15,7 +17,7 @@ class MockDefaultExchange implements MockExchange {
     }
 
     @Override
-    public void bind(ReceiverPointer receiver, String routingKey) {
+    public void bind(ReceiverPointer receiver, String routingKey, Map<String, Object> arguments) {
         // nothing needed
     }
 

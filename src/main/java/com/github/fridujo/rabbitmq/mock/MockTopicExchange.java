@@ -8,7 +8,7 @@ public class MockTopicExchange extends BindableMockExchange {
         super(name, arguments, receiverRegistry);
     }
 
-    protected boolean match(String bindingKey, String routingKey) {
+    protected boolean match(String bindingKey, Map<String, Object> bindArguments, String routingKey, Map<String, Object> headers) {
         String bindingRegex = bindingKey
             .replace("*", "([^\\.]+)")
             .replace("#", "(.+)");

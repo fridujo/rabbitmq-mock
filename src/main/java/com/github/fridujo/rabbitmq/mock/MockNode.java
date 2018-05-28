@@ -62,7 +62,7 @@ public class MockNode implements ReceiverRegistry {
     public AMQP.Exchange.BindOk exchangeBind(String destinationName, String sourceName, String routingKey, Map<String, Object> arguments) {
         MockExchange source = getExchangeUnchecked(sourceName);
         MockExchange destination = getExchangeUnchecked(destinationName);
-        source.bind(destination.pointer(), routingKey);
+        source.bind(destination.pointer(), routingKey, arguments);
         return new AMQImpl.Exchange.BindOk();
     }
 
@@ -88,7 +88,7 @@ public class MockNode implements ReceiverRegistry {
     public AMQP.Queue.BindOk queueBind(String queueName, String exchangeName, String routingKey, Map<String, Object> arguments) {
         MockExchange exchange = getExchangeUnchecked(exchangeName);
         MockQueue queue = getQueueUnchecked(queueName);
-        exchange.bind(queue.pointer(), routingKey);
+        exchange.bind(queue.pointer(), routingKey, arguments);
         return new AMQImpl.Queue.BindOk();
     }
 
