@@ -1,6 +1,6 @@
 # RabbitMQ-mock
 [![Build Status](https://travis-ci.com/fridujo/rabbitmq-mock.svg?branch=master)](https://travis-ci.com/fridujo/rabbitmq-mock)
-[![Coverage Status](https://coveralls.io/repos/github/fridujo/rabbitmq-mock/badge.svg?branch=master)](https://coveralls.io/github/fridujo/rabbitmq-mock?branch=master)
+[![Coverage Status](https://codecov.io/gh/fridujo/rabbitmq-mock/branch/master/graph/badge.svg)](https://codecov.io/gh/fridujo/rabbitmq-mock/)
 [![Maven Central](https://img.shields.io/maven-central/v/com.github.fridujo/rabbitmq-mock.svg)](https://search.maven.org/#search|ga|1|a:"rabbitmq-mock")
 [![License](https://img.shields.io/github/license/fridujo/spring-automocker.svg)](https://opensource.org/licenses/Apache-2.0)
 

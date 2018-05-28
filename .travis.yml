@@ -9,7 +9,6 @@ script: "mvn cobertura:cobertura"
 
 after_success:
 - bash <(curl -s https://codecov.io/bash)
-- mvn coveralls:report
 - openssl aes-256-cbc -pass pass:$ENCRYPTION_PASSWORD -in $GPG_DIR/pubring.gpg.enc
   -out $GPG_DIR/pubring.gpg -d
 - openssl aes-256-cbc -pass pass:$ENCRYPTION_PASSWORD -in $GPG_DIR/secring.gpg.enc
