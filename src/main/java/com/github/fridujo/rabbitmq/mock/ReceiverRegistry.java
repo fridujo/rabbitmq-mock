@@ -1,6 +1,8 @@
 package com.github.fridujo.rabbitmq.mock;
 
+import java.util.Optional;
+
 interface ReceiverRegistry {
 
-    Receiver getReceiver(ReceiverPointer receiverPointer);
+    Optional<Receiver> getReceiver(ReceiverPointer receiverPointer);
 }

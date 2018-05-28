@@ -50,7 +50,7 @@ public class MockNode implements ReceiverRegistry {
     }
 
     public AMQP.Exchange.DeclareOk exchangeDeclare(String exchangeName, String type, boolean durable, boolean autoDelete, boolean internal, Map<String, Object> arguments) {
-        exchanges.put(exchangeName, MockExchangeFactory.build(exchangeName, type, this));
+        exchanges.put(exchangeName, MockExchangeFactory.build(exchangeName, type, arguments, this));
         return new AMQImpl.Exchange.DeclareOk();
     }
 
@@ -132,12 +132,12 @@ public class MockNode implements ReceiverRegistry {
     }
 
     @Override
-    public Receiver getReceiver(ReceiverPointer receiverPointer) {
-        final Receiver receiver;
+    public Optional<Receiver> getReceiver(ReceiverPointer receiverPointer) {
+        final Optional<Receiver> receiver;
         if (receiverPointer.type == ReceiverPointer.Type.EXCHANGE) {
-            receiver = exchanges.getOrDefault(receiverPointer.name, defaultExchange);
+            receiver = Optional.ofNullable(exchanges.get(receiverPointer.name));
         } else {
-            receiver = queues.getOrDefault(receiverPointer.name, unroutedQueue);
+            receiver = Optional.ofNullable(queues.get(receiverPointer.name));
         }
         return receiver;
     }

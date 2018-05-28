@@ -589,7 +589,7 @@ public class MockChannel implements Channel {
     private AMQP.BasicProperties nullToEmpty(AMQP.BasicProperties props) {
         return props != null ? props : new AMQP.BasicProperties.Builder().build();
     }
-    
+
     private Map<String, Object> nullToEmpty(Map<String, Object> arguments) {
         return arguments != null ? arguments : Collections.emptyMap();
     }

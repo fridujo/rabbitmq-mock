@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
+import java.util.Collections;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
@@ -17,7 +19,7 @@ class ExchangeTest {
             "some.other.key, some.other.key"
         })
         void binding_key_matches_routing_key(String bindingKey, String routingKey) {
-            MockTopicExchange topicExchange = new MockTopicExchange("test", mock(ReceiverRegistry.class));
+            MockTopicExchange topicExchange = new MockTopicExchange("test", Collections.emptyMap(), mock(ReceiverRegistry.class));
 
             assertThat(topicExchange.match(bindingKey, routingKey)).isTrue();
         }
@@ -29,7 +31,7 @@ class ExchangeTest {
             "lazy.#, lazy.pink.rabbit"
         })
         void binding_key_does_not_match_routing_key(String bindingKey, String routingKey) {
-            MockDirectExchange topicExchange = new MockDirectExchange("test", mock(ReceiverRegistry.class));
+            MockDirectExchange topicExchange = new MockDirectExchange("test", Collections.emptyMap(), mock(ReceiverRegistry.class));
 
             assertThat(topicExchange.match(bindingKey, routingKey)).isFalse();
         }
@@ -52,7 +54,7 @@ class ExchangeTest {
             "lazy.#, quick.brown.fox"
         })
         void binding_key_matches_routing_key(String bindingKey, String routingKey) {
-            MockFanoutExchange topicExchange = new MockFanoutExchange("test", mock(ReceiverRegistry.class));
+            MockFanoutExchange topicExchange = new MockFanoutExchange("test", Collections.emptyMap(), mock(ReceiverRegistry.class));
 
             assertThat(topicExchange.match(bindingKey, routingKey)).isTrue();
         }
@@ -69,7 +71,7 @@ class ExchangeTest {
             "lazy.#, lazy.pink.rabbit"
         })
         void binding_key_matches_routing_key(String bindingKey, String routingKey) {
-            MockTopicExchange topicExchange = new MockTopicExchange("test", mock(ReceiverRegistry.class));
+            MockTopicExchange topicExchange = new MockTopicExchange("test", Collections.emptyMap(), mock(ReceiverRegistry.class));
 
             assertThat(topicExchange.match(bindingKey, routingKey)).isTrue();
         }
@@ -84,7 +86,7 @@ class ExchangeTest {
             "lazy.#, quick.brown.fox"
         })
         void binding_key_does_not_match_routing_key(String bindingKey, String routingKey) {
-            MockTopicExchange topicExchange = new MockTopicExchange("test", mock(ReceiverRegistry.class));
+            MockTopicExchange topicExchange = new MockTopicExchange("test", Collections.emptyMap(), mock(ReceiverRegistry.class));
 
             assertThat(topicExchange.match(bindingKey, routingKey)).isFalse();
         }

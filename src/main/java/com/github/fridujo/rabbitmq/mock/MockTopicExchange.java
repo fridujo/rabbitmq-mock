@@ -1,9 +1,11 @@
 package com.github.fridujo.rabbitmq.mock;
 
+import java.util.Map;
+
 public class MockTopicExchange extends BindableMockExchange {
 
-    public MockTopicExchange(String name, ReceiverRegistry receiverRegistry) {
-        super(name, receiverRegistry);
+    public MockTopicExchange(String name, Map<String, Object> arguments, ReceiverRegistry receiverRegistry) {
+        super(name, arguments, receiverRegistry);
     }
 
     protected boolean match(String bindingKey, String routingKey) {
