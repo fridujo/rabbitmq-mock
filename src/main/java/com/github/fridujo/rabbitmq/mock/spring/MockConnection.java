@@ -26,7 +26,7 @@ class MockConnection implements Connection {
 
     @Override
     public Channel createChannel(boolean transactional) throws AmqpException {
-        if (connection.isOpen()) {
+        if (isOpen()) {
             return connection.createChannel();
         } else {
             throw RabbitExceptionTranslator.convertRabbitAccessException(
@@ -47,7 +47,7 @@ class MockConnection implements Connection {
 
     @Override
     public int getLocalPort() {
-        return -1;
+        return 0;
     }
 
     @Override

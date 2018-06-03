@@ -22,22 +22,22 @@ public class MockConnectionFactory implements ConnectionFactory {
 
     @Override
     public String getHost() {
-        return "localtest";
+        return com.rabbitmq.client.ConnectionFactory.DEFAULT_HOST;
     }
 
     @Override
     public int getPort() {
-        return -1;
+        return com.rabbitmq.client.ConnectionFactory.DEFAULT_AMQP_PORT;
     }
 
     @Override
     public String getVirtualHost() {
-        return null;
+        return com.rabbitmq.client.ConnectionFactory.DEFAULT_VHOST;
     }
 
     @Override
     public String getUsername() {
-        return null;
+        return com.rabbitmq.client.ConnectionFactory.DEFAULT_USER;
     }
 
     @Override
