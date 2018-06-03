@@ -10,7 +10,7 @@ public abstract class MockExchangeFactory {
             return new MockDirectExchange(exchangeName, arguments, receiverRegistry);
         } else if ("fanout".equals(type)) {
             return new MockFanoutExchange(exchangeName, arguments, receiverRegistry);
-        } else if("headers".equals(type)) {
+        } else if ("headers".equals(type)) {
             return new MockHeadersExchange(exchangeName, arguments, receiverRegistry);
         }
         throw new IllegalArgumentException("No exchange type " + type);

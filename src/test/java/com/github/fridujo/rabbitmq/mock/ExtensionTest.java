@@ -41,4 +41,27 @@ class ExtensionTest {
             }
         }
     }
+
+    @Test
+    void dead_letter_exchange_is_used_when_a_message_is_rejected_without_requeue() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                channel.exchangeDeclare("rejected-ex", BuiltinExchangeType.FANOUT);
+                channel.queueDeclare("rejected", true, false, false, null);
+                channel.queueBindNoWait("rejected", "rejected-ex", "unused", null);
+                channel.queueDeclare("fruits", true, false, false, Collections.singletonMap("x-dead-letter-exchange", "rejected-ex"));
+
+                channel.basicPublish("", "fruits", null, "banana".getBytes());
+                GetResponse getResponse = channel.basicGet("fruits", false);
+                channel.basicNack(getResponse.getEnvelope().getDeliveryTag(), false, true);
+                assertThat(channel.messageCount("rejected")).isEqualTo(0);
+                assertThat(channel.messageCount("fruits")).isEqualTo(1);
+
+                getResponse = channel.basicGet("fruits", false);
+                channel.basicReject(getResponse.getEnvelope().getDeliveryTag(), false);
+                assertThat(channel.messageCount("rejected")).isEqualTo(1);
+                assertThat(channel.messageCount("fruits")).isEqualTo(0);
+            }
+        }
+    }
 }

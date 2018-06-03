@@ -13,7 +13,6 @@ import java.util.function.Supplier;
 public class MockNode implements ReceiverRegistry {
 
     private final MockDefaultExchange defaultExchange = new MockDefaultExchange(this);
-    private final MockQueue unroutedQueue = new MockQueue("unrouted");
     private final Map<String, MockExchange> exchanges = new ConcurrentHashMap<>();
     private final Map<String, MockQueue> queues = new ConcurrentHashMap<>();
     private final RandomStringGenerator consumerTagGenerator = new RandomStringGenerator(
@@ -24,7 +23,6 @@ public class MockNode implements ReceiverRegistry {
 
     public MockNode() {
         exchanges.put("", defaultExchange);
-        queues.put("unrouted", unroutedQueue);
     }
 
     public void basicPublish(String exchangeName, String routingKey, boolean mandatory, boolean immediate, AMQP.BasicProperties props, byte[] body) {
@@ -73,10 +71,10 @@ public class MockNode implements ReceiverRegistry {
         return new AMQImpl.Exchange.UnbindOk();
     }
 
-    public AMQP.Queue.DeclareOk queueDeclare(String queue, boolean durable, boolean exclusive, boolean autoDelete, Map<String, Object> arguments) {
-        queues.putIfAbsent(queue, new MockQueue(queue));
+    public AMQP.Queue.DeclareOk queueDeclare(String queueName, boolean durable, boolean exclusive, boolean autoDelete, Map<String, Object> arguments) {
+        queues.putIfAbsent(queueName, new MockQueue(queueName, arguments, this));
         return new AMQP.Queue.DeclareOk.Builder()
-            .queue(queue)
+            .queue(queueName)
             .build();
     }
 

@@ -50,9 +50,7 @@ public abstract class BindableMockExchange implements MockExchange {
             .filter(aeObject -> aeObject instanceof String)
             .map(String.class::cast)
             .map(aeName -> new ReceiverPointer(ReceiverPointer.Type.EXCHANGE, aeName))
-            .map(receiverRegistry::getReceiver)
-            .filter(Optional::isPresent)
-            .map(Optional::get);
+            .flatMap(receiverRegistry::getReceiver);
     }
 
     protected abstract boolean match(String bindingKey, Map<String, Object> bindArguments, String routingKey, Map<String, Object> headers);

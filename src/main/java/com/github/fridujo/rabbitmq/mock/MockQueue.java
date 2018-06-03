@@ -14,6 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -27,15 +28,19 @@ public class MockQueue implements Receiver {
 
     private final String name;
     private final ReceiverPointer pointer;
+    private final Map<String, Object> arguments;
+    private final ReceiverRegistry receiverRegistry;
     private final Map<String, ConsumerAndTag> consumersByTag = new LinkedHashMap<>();
     private final AtomicInteger sequence = new AtomicInteger();
     private final Queue<Message> messages = new LinkedList<>();
     private final Map<Long, Message> unackedMessagesByDeliveryTag = new LinkedHashMap<>();
     private final ExecutorService executorService = Executors.newFixedThreadPool(1);
 
-    public MockQueue(String name) {
+    public MockQueue(String name, Map<String, Object> arguments, ReceiverRegistry receiverRegistry) {
         this.name = name;
         this.pointer = new ReceiverPointer(ReceiverPointer.Type.QUEUE, name);
+        this.arguments = arguments;
+        this.receiverRegistry = receiverRegistry;
         start();
     }
 
@@ -136,9 +141,26 @@ public class MockQueue implements Receiver {
 
     public void basicReject(long deliveryTag, boolean requeue) {
         Message nacked = unackedMessagesByDeliveryTag.remove(deliveryTag);
-        if (requeue) {
-            messages.offer(nacked);
+        if (nacked != null) {
+            if (requeue) {
+                messages.offer(nacked);
+            } else {
+                getDeadLetterExchange().ifPresent(deadLetterExchange -> deadLetterExchange.publish(
+                    nacked.exchangeName,
+                    nacked.routingKey,
+                    nacked.props,
+                    nacked.body)
+                );
+            }
         }
+    }
+
+    private Optional<Receiver> getDeadLetterExchange() {
+        return Optional.ofNullable(arguments.get(DEAD_LETTER_EXCHANGE_KEY))
+            .filter(aeObject -> aeObject instanceof String)
+            .map(String.class::cast)
+            .map(aeName -> new ReceiverPointer(ReceiverPointer.Type.EXCHANGE, aeName))
+            .flatMap(receiverRegistry::getReceiver);
     }
 
     public void basicCancel(String consumerTag) {
