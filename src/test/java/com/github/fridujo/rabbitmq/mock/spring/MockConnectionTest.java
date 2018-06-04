@@ -18,9 +18,11 @@ class MockConnectionTest {
         Connection connection = new MockConnectionFactory().createConnection();
         BlockedListener blockedListener = mock(BlockedListener.class);
 
-        connection.addBlockedListener(blockedListener);
+        assertThatExceptionOfType(UnsupportedOperationException.class)
+            .isThrownBy(() -> connection.addBlockedListener(blockedListener));
 
-        assertThat(connection.removeBlockedListener(blockedListener)).isFalse();
+        assertThatExceptionOfType(UnsupportedOperationException.class)
+            .isThrownBy(() -> connection.removeBlockedListener(blockedListener));
     }
 
     @Test
@@ -33,7 +35,9 @@ class MockConnectionTest {
     @Test
     void createChannel_whereas_connection_is_closed_throws() {
         Connection connection = new MockConnectionFactory().createConnection();
+        assertThat(connection.isOpen()).isTrue();
         connection.close();
+        assertThat(connection.isOpen()).isFalse();
         assertThatExceptionOfType(AmqpConnectException.class)
             .isThrownBy(() -> connection.createChannel(false))
             .withCauseExactlyInstanceOf(AlreadyClosedException.class)

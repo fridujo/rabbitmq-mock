@@ -1,5 +1,6 @@
 package com.github.fridujo.rabbitmq.mock;
 
+import com.rabbitmq.client.AlreadyClosedException;
 import com.rabbitmq.client.BlockedCallback;
 import com.rabbitmq.client.BlockedListener;
 import com.rabbitmq.client.Channel;
@@ -65,7 +66,10 @@ public class MockConnection implements Connection {
     }
 
     @Override
-    public Channel createChannel() {
+    public Channel createChannel() throws AlreadyClosedException {
+        if (!isOpen()) {
+            throw new AlreadyClosedException(new ShutdownSignalException(false, true, null, this));
+        }
         return createChannel(channelSequence.incrementAndGet());
     }
 

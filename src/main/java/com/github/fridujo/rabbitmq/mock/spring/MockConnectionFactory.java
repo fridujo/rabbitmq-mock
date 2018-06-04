@@ -15,9 +15,7 @@ public class MockConnectionFactory implements ConnectionFactory {
 
     @Override
     public Connection createConnection() throws AmqpException {
-        Connection connection = new MockConnection(mockConnectionFactory.newConnection(), connectionListeners);
-        connectionListeners.forEach(connectionListener -> connectionListener.onCreate(connection));
-        return connection;
+        return new MockConnection(mockConnectionFactory.newConnection(), connectionListeners);
     }
 
     @Override
