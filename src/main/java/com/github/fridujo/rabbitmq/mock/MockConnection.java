@@ -1,5 +1,6 @@
 package com.github.fridujo.rabbitmq.mock;
 
+import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.AlreadyClosedException;
 import com.rabbitmq.client.BlockedCallback;
 import com.rabbitmq.client.BlockedListener;
@@ -9,8 +10,12 @@ import com.rabbitmq.client.ExceptionHandler;
 import com.rabbitmq.client.ShutdownListener;
 import com.rabbitmq.client.ShutdownSignalException;
 import com.rabbitmq.client.UnblockedCallback;
+import com.rabbitmq.client.impl.AMQConnection;
+import com.rabbitmq.client.impl.DefaultExceptionHandler;
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -20,49 +25,53 @@ public class MockConnection implements Connection {
     private final AtomicBoolean opened = new AtomicBoolean(true);
     private final AtomicInteger channelSequence = new AtomicInteger();
     private final MockNode mockNode;
+    private final InetAddress address;
+    private final DefaultExceptionHandler exceptionHandler = new DefaultExceptionHandler();
+    private String id;
 
     public MockConnection(MockNode mockNode) {
         this.mockNode = mockNode;
+        address = new InetSocketAddress("127.0.0.1", 0).getAddress();
     }
 
     @Override
     public InetAddress getAddress() {
-        throw new UnsupportedOperationException();
+        return address;
     }
 
     @Override
     public int getPort() {
-        throw new UnsupportedOperationException();
+        return com.rabbitmq.client.ConnectionFactory.DEFAULT_AMQP_PORT;
     }
 
     @Override
     public int getChannelMax() {
-        throw new UnsupportedOperationException();
+        return 0;
     }
 
     @Override
     public int getFrameMax() {
-        throw new UnsupportedOperationException();
+        return 0;
     }
 
     @Override
     public int getHeartbeat() {
-        throw new UnsupportedOperationException();
+        return 0;
     }
 
     @Override
     public Map<String, Object> getClientProperties() {
-        throw new UnsupportedOperationException();
+        return AMQConnection.defaultClientProperties();
     }
 
     @Override
     public String getClientProvidedName() {
-        throw new UnsupportedOperationException();
+        return null;
     }
 
     @Override
     public Map<String, Object> getServerProperties() {
-        throw new UnsupportedOperationException();
+        return Collections.emptyMap();
     }
 
     @Override
@@ -81,42 +90,42 @@ public class MockConnection implements Connection {
 
     @Override
     public void close() {
-        opened.set(false);
+        close(AMQP.REPLY_SUCCESS, "OK");
     }
 
     @Override
     public void close(int closeCode, String closeMessage) {
-        opened.set(false);
+        close(closeCode, closeMessage, -1);
     }
 
     @Override
     public void close(int timeout) {
-        throw new UnsupportedOperationException();
+        close(AMQP.REPLY_SUCCESS, "OK", timeout);
     }
 
     @Override
     public void close(int closeCode, String closeMessage, int timeout) {
-        throw new UnsupportedOperationException();
+        opened.set(false);
     }
 
     @Override
     public void abort() {
-        throw new UnsupportedOperationException();
+        abort(AMQP.REPLY_SUCCESS, "OK");
     }
 
     @Override
     public void abort(int closeCode, String closeMessage) {
-        throw new UnsupportedOperationException();
+        abort(closeCode, closeMessage, -1);
     }
 
     @Override
     public void abort(int timeout) {
-        throw new UnsupportedOperationException();
+        abort(AMQP.REPLY_SUCCESS, "OK", timeout);
     }
 
     @Override
     public void abort(int closeCode, String closeMessage, int timeout) {
-        throw new UnsupportedOperationException();
+        close(closeCode, closeMessage, timeout);
     }
 
     @Override
@@ -141,17 +150,17 @@ public class MockConnection implements Connection {
 
     @Override
     public ExceptionHandler getExceptionHandler() {
-        throw new UnsupportedOperationException();
+        return exceptionHandler;
     }
 
     @Override
     public String getId() {
-        throw new UnsupportedOperationException();
+        return id;
     }
 
     @Override
     public void setId(String id) {
-        throw new UnsupportedOperationException();
+        this.id = id;
     }
 
     @Override
