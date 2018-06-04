@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -166,12 +165,17 @@ public class MockQueue implements Receiver {
     public void basicCancel(String consumerTag) {
         if (consumersByTag.containsKey(consumerTag)) {
             Consumer consumer = consumersByTag.remove(consumerTag).consumer;
-            try {
-                consumer.handleCancel(consumerTag);
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
             consumer.handleCancelOk(consumerTag);
+        }
+    }
+
+    public void notifyDeleted() {
+        for (ConsumerAndTag consumerAndTag : consumersByTag.values()) {
+            try {
+                consumerAndTag.consumer.handleCancel(consumerAndTag.tag);
+            } catch (IOException e) {
+                LOGGER.warn("Consumer threw an exception when notified about cancellation", e);
+            }
         }
     }
 

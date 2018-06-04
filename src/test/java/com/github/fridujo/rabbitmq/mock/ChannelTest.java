@@ -348,15 +348,9 @@ class ChannelTest {
                 assertThat(messages).hasSize(1);
                 assertThat(cancelled).isFalse();
 
-                messages.clear();
-                channel.basicCancel(consumerTag);
+                channel.queueDelete("");
 
                 assertThat(cancelled).isTrue();
-
-                channel.basicPublish("", queueName, null, "test message".getBytes());
-                TimeUnit.MILLISECONDS.sleep(50L);
-
-                assertThat(messages).hasSize(0);
             }
         }
     }

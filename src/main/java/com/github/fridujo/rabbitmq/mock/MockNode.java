@@ -80,6 +80,7 @@ public class MockNode implements ReceiverRegistry {
 
     public AMQP.Queue.DeleteOk queueDelete(String queueName, boolean ifUnused, boolean ifEmpty) {
         MockQueue queue = queues.remove(queueName);
+        queue.notifyDeleted();
         return new AMQImpl.Queue.DeleteOk(queue != null ? queue.messageCount() : 0);
     }
 
