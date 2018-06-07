@@ -148,12 +148,12 @@ public class MockChannel implements Channel {
     }
 
     @Override
-    public void basicPublish(String exchange, String routingKey, AMQP.BasicProperties props, byte[] body) throws IOException {
+    public void basicPublish(String exchange, String routingKey, AMQP.BasicProperties props, byte[] body) {
         basicPublish(exchange, routingKey, false, props, body);
     }
 
     @Override
-    public void basicPublish(String exchange, String routingKey, boolean mandatory, AMQP.BasicProperties props, byte[] body) throws IOException {
+    public void basicPublish(String exchange, String routingKey, boolean mandatory, AMQP.BasicProperties props, byte[] body) {
         basicPublish(exchange, routingKey, false, false, props, body);
     }
 
@@ -563,7 +563,7 @@ public class MockChannel implements Channel {
 
     @Override
     public void addShutdownListener(ShutdownListener listener) {
-        throw new UnsupportedOperationException();
+        // do nothing
     }
 
     @Override
@@ -573,7 +573,7 @@ public class MockChannel implements Channel {
 
     @Override
     public ShutdownSignalException getCloseReason() {
-        throw new UnsupportedOperationException();
+        return null;
     }
 
     @Override
