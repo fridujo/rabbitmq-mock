@@ -1,10 +1,12 @@
 package com.github.fridujo.rabbitmq.mock.spring;
 
+import com.github.fridujo.rabbitmq.mock.MockConnectionFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.TopicExchange;
+import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -94,7 +96,7 @@ class SpringIntegrationTest {
 
         @Bean
         ConnectionFactory connectionFactory() {
-            return new MockConnectionFactory();
+            return new CachingConnectionFactory(new MockConnectionFactory());
         }
 
         @Bean
@@ -139,7 +141,7 @@ class SpringIntegrationTest {
             this.messages.add(message);
         }
 
-        public List<String> getMessages() {
+        List<String> getMessages() {
             return messages;
         }
     }

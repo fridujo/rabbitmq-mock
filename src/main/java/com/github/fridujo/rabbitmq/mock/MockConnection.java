@@ -84,8 +84,7 @@ public class MockConnection implements Connection {
 
     @Override
     public Channel createChannel(int channelNumber) {
-        MockChannel mockChannel = new MockChannel(channelNumber, mockNode, this);
-        return mockChannel;
+        return new MockChannel(channelNumber, mockNode, this);
     }
 
     @Override
@@ -130,22 +129,24 @@ public class MockConnection implements Connection {
 
     @Override
     public void addBlockedListener(BlockedListener listener) {
-        throw new UnsupportedOperationException();
+        // do nothing
     }
 
     @Override
     public BlockedListener addBlockedListener(BlockedCallback blockedCallback, UnblockedCallback unblockedCallback) {
-        throw new UnsupportedOperationException();
+        // do nothing
+        return null;
     }
 
     @Override
     public boolean removeBlockedListener(BlockedListener listener) {
-        throw new UnsupportedOperationException();
+        // do nothing
+        return true;
     }
 
     @Override
     public void clearBlockedListeners() {
-        throw new UnsupportedOperationException();
+        // do nothing
     }
 
     @Override
@@ -165,17 +166,17 @@ public class MockConnection implements Connection {
 
     @Override
     public void addShutdownListener(ShutdownListener listener) {
-        throw new UnsupportedOperationException();
+        // do nothing
     }
 
     @Override
     public void removeShutdownListener(ShutdownListener listener) {
-        throw new UnsupportedOperationException();
+        // do nothing
     }
 
     @Override
     public ShutdownSignalException getCloseReason() {
-        throw new UnsupportedOperationException();
+        return null;
     }
 
     @Override

@@ -26,6 +26,6 @@ class ReceiverPointer {
     }
 
     public enum Type {
-        QUEUE, EXCHANGE;
+        QUEUE, EXCHANGE
     }
 }

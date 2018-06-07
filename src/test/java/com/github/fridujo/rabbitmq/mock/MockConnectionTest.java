@@ -1,7 +1,9 @@
 package com.github.fridujo.rabbitmq.mock;
 
+import com.rabbitmq.client.AlreadyClosedException;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.ShutdownSignalException;
 import com.rabbitmq.client.impl.AMQConnection;
 import com.rabbitmq.client.impl.DefaultExceptionHandler;
 import org.assertj.core.api.SoftAssertions;
@@ -67,20 +69,12 @@ class MockConnectionTest {
     @Test
     void blockedListeners_and_shutdown_listeners_are_not_stored() throws IOException {
         try (Connection connection = new MockConnectionFactory().newConnection()) {
-            assertThatExceptionOfType(UnsupportedOperationException.class)
-                .isThrownBy(() -> connection.addBlockedListener(reason -> { }, () -> { }));
-
-            assertThatExceptionOfType(UnsupportedOperationException.class)
-                .isThrownBy(() -> connection.clearBlockedListeners());
-
-            assertThatExceptionOfType(UnsupportedOperationException.class)
-                .isThrownBy(() -> connection.addShutdownListener(sse -> {}));
-
-            assertThatExceptionOfType(UnsupportedOperationException.class)
-                .isThrownBy(() -> connection.removeShutdownListener(sse -> {}));
-
-            assertThatExceptionOfType(UnsupportedOperationException.class)
-                .isThrownBy(() -> connection.getCloseReason());
+            assertThat(connection.removeBlockedListener(null)).isTrue();
+            assertThat(connection.addBlockedListener(null, null)).isNull();
+            connection.clearBlockedListeners();
+            connection.addShutdownListener(null);
+            connection.removeShutdownListener(null);
+            assertThat(connection.getCloseReason()).isNull();
         }
     }
 
@@ -92,6 +86,25 @@ class MockConnectionTest {
             connection.setId(id);
 
             assertThat(connection.getId()).isEqualTo(id);
+        }
+    }
+
+    @Test
+    void createChannel_throws_when_connection_is_closed() throws IOException {
+        try (Connection connection = new MockConnectionFactory().newConnection()) {
+            connection.close();
+
+            assertThatExceptionOfType(AlreadyClosedException.class)
+                .isThrownBy(() -> connection.createChannel())
+                .withCauseExactlyInstanceOf(ShutdownSignalException.class);
+        }
+    }
+
+    @Test
+    void protectedApiMethods_throw() throws IOException {
+        try (Connection connection = new MockConnectionFactory().newConnection()) {
+            assertThatExceptionOfType(UnsupportedOperationException.class)
+                .isThrownBy(() -> connection.notifyListeners());
         }
     }
 }
