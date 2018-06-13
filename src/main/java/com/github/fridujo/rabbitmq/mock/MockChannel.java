@@ -7,12 +7,12 @@ import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Command;
 import com.rabbitmq.client.ConfirmCallback;
 import com.rabbitmq.client.ConfirmListener;
-import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.Consumer;
 import com.rabbitmq.client.ConsumerShutdownSignalCallback;
 import com.rabbitmq.client.DeliverCallback;
 import com.rabbitmq.client.GetResponse;
 import com.rabbitmq.client.Method;
+import com.rabbitmq.client.MetricsCollector;
 import com.rabbitmq.client.ReturnCallback;
 import com.rabbitmq.client.ReturnListener;
 import com.rabbitmq.client.ShutdownListener;
@@ -36,6 +36,7 @@ public class MockChannel implements Channel {
     private final int channelNumber;
     private final MockNode node;
     private final MockConnection mockConnection;
+    private final MetricsCollector metricsCollector;
     private final AtomicBoolean opened = new AtomicBoolean(true);
     private final AtomicLong deliveryTagSequence = new AtomicLong();
     private final RandomStringGenerator queueNameGenerator = new RandomStringGenerator(
@@ -45,10 +46,12 @@ public class MockChannel implements Channel {
 
     private String lastGeneratedQueueName;
 
-    public MockChannel(int channelNumber, MockNode node, MockConnection mockConnection) {
+    public MockChannel(int channelNumber, MockNode node, MockConnection mockConnection, MetricsCollector metricsCollector) {
         this.channelNumber = channelNumber;
         this.node = node;
         this.mockConnection = mockConnection;
+        this.metricsCollector = metricsCollector;
+        metricsCollector.newChannel(this);
     }
 
     @Override
@@ -57,7 +60,7 @@ public class MockChannel implements Channel {
     }
 
     @Override
-    public Connection getConnection() {
+    public MockConnection getConnection() {
         return mockConnection;
     }
 
@@ -69,6 +72,7 @@ public class MockChannel implements Channel {
 
     @Override
     public void close(int closeCode, String closeMessage) {
+        metricsCollector.closeChannel(this);
         opened.set(false);
     }
 
@@ -160,6 +164,7 @@ public class MockChannel implements Channel {
     @Override
     public void basicPublish(String exchange, String routingKey, boolean mandatory, boolean immediate, AMQP.BasicProperties props, byte[] body) {
         node.basicPublish(exchange, routingKey, mandatory, immediate, nullToEmpty(props), body);
+        metricsCollector.basicPublish(this);
     }
 
     @Override
@@ -282,7 +287,7 @@ public class MockChannel implements Channel {
 
     @Override
     public AMQP.Queue.DeclareOk queueDeclare(String queue, boolean durable, boolean exclusive, boolean autoDelete, Map<String, Object> arguments) {
-        return node.queueDeclare(generateIfEmpty(queue), durable, exclusive, autoDelete, arguments);
+        return node.queueDeclare(generateIfEmpty(queue), durable, exclusive, autoDelete, arguments, this);
     }
 
     @Override
@@ -357,22 +362,27 @@ public class MockChannel implements Channel {
 
     @Override
     public GetResponse basicGet(String queue, boolean autoAck) {
-        return node.basicGet(lastGeneratedIfEmpty(queue), autoAck, this::nextDeliveryTag);
+        GetResponse getResponse = node.basicGet(lastGeneratedIfEmpty(queue), autoAck, this::nextDeliveryTag);
+        metricsCollector.consumedMessage(this, getResponse.getEnvelope().getDeliveryTag(), autoAck);
+        return getResponse;
     }
 
     @Override
     public void basicAck(long deliveryTag, boolean multiple) {
         node.basicAck(deliveryTag, multiple);
+        metricsCollector.basicAck(this, deliveryTag, multiple);
     }
 
     @Override
     public void basicNack(long deliveryTag, boolean multiple, boolean requeue) {
         node.basicNack(deliveryTag, multiple, requeue);
+        metricsCollector.basicNack(this, deliveryTag);
     }
 
     @Override
     public void basicReject(long deliveryTag, boolean requeue) {
         node.basicReject(deliveryTag, requeue);
+        metricsCollector.basicReject(this, deliveryTag);
     }
 
     @Override
@@ -611,5 +621,9 @@ public class MockChannel implements Channel {
 
     private long nextDeliveryTag() {
         return deliveryTagSequence.incrementAndGet();
+    }
+
+    public MetricsCollector getMetricsCollector() {
+        return metricsCollector;
     }
 }

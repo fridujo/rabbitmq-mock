@@ -29,17 +29,19 @@ public class MockQueue implements Receiver {
     private final ReceiverPointer pointer;
     private final Map<String, Object> arguments;
     private final ReceiverRegistry receiverRegistry;
+    private final MockChannel mockChannel;
     private final Map<String, ConsumerAndTag> consumersByTag = new LinkedHashMap<>();
     private final AtomicInteger sequence = new AtomicInteger();
     private final Queue<Message> messages = new LinkedList<>();
     private final Map<Long, Message> unackedMessagesByDeliveryTag = new LinkedHashMap<>();
     private final ExecutorService executorService = Executors.newFixedThreadPool(1);
 
-    public MockQueue(String name, Map<String, Object> arguments, ReceiverRegistry receiverRegistry) {
+    public MockQueue(String name, Map<String, Object> arguments, ReceiverRegistry receiverRegistry, MockChannel mockChannel) {
         this.name = name;
         this.pointer = new ReceiverPointer(ReceiverPointer.Type.QUEUE, name);
         this.arguments = arguments;
         this.receiverRegistry = receiverRegistry;
+        this.mockChannel = mockChannel;
         start();
     }
 
@@ -68,6 +70,7 @@ public class MockQueue implements Receiver {
                     message.routingKey);
                 try {
                     nextConsumer.consumer.handleDelivery(nextConsumer.tag, envelope, message.props, message.body);
+                    mockChannel.getMetricsCollector().consumedMessage(mockChannel, deliveryTag, nextConsumer.tag);
                     if (nextConsumer.autoAck) {
                         unackedMessagesByDeliveryTag.remove(deliveryTag);
                     }
