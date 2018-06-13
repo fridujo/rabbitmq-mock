@@ -7,6 +7,7 @@ import com.rabbitmq.client.BlockedListener;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ExceptionHandler;
+import com.rabbitmq.client.MetricsCollector;
 import com.rabbitmq.client.ShutdownListener;
 import com.rabbitmq.client.ShutdownSignalException;
 import com.rabbitmq.client.UnblockedCallback;
@@ -25,13 +26,16 @@ public class MockConnection implements Connection {
     private final AtomicBoolean opened = new AtomicBoolean(true);
     private final AtomicInteger channelSequence = new AtomicInteger();
     private final MockNode mockNode;
+    private final MetricsCollector metricsCollector;
     private final InetAddress address;
     private final DefaultExceptionHandler exceptionHandler = new DefaultExceptionHandler();
     private String id;
 
-    public MockConnection(MockNode mockNode) {
+    public MockConnection(MockNode mockNode, MetricsCollector metricsCollector) {
         this.mockNode = mockNode;
-        address = new InetSocketAddress("127.0.0.1", 0).getAddress();
+        this.metricsCollector = metricsCollector;
+        this.address = new InetSocketAddress("127.0.0.1", 0).getAddress();
+        this.metricsCollector.newConnection(this);
     }
 
     @Override
@@ -76,15 +80,15 @@ public class MockConnection implements Connection {
 
     @Override
     public Channel createChannel() throws AlreadyClosedException {
-        if (!isOpen()) {
-            throw new AlreadyClosedException(new ShutdownSignalException(false, true, null, this));
-        }
         return createChannel(channelSequence.incrementAndGet());
     }
 
     @Override
-    public Channel createChannel(int channelNumber) {
-        return new MockChannel(channelNumber, mockNode, this);
+    public Channel createChannel(int channelNumber) throws AlreadyClosedException {
+        if (!isOpen()) {
+            throw new AlreadyClosedException(new ShutdownSignalException(false, true, null, this));
+        }
+        return new MockChannel(channelNumber, mockNode, this, metricsCollector);
     }
 
     @Override
@@ -104,6 +108,7 @@ public class MockConnection implements Connection {
 
     @Override
     public void close(int closeCode, String closeMessage, int timeout) {
+        metricsCollector.closeConnection(this);
         opened.set(false);
     }
 
@@ -187,5 +192,9 @@ public class MockConnection implements Connection {
     @Override
     public boolean isOpen() {
         return opened.get();
+    }
+
+    public MetricsCollector getMetricsCollector() {
+        return metricsCollector;
     }
 }

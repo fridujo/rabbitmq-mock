@@ -2,6 +2,8 @@ package com.github.fridujo.rabbitmq.mock;
 
 import com.rabbitmq.client.AddressResolver;
 import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.MetricsCollector;
+import com.rabbitmq.client.NoOpMetricsCollector;
 
 import java.util.concurrent.ExecutorService;
 
@@ -20,6 +22,11 @@ public class MockConnectionFactory extends ConnectionFactory {
     }
 
     public MockConnection newConnection() {
-        return new MockConnection(mockNode);
+        MetricsCollector metricsCollector = getMetricsCollector();
+        if (metricsCollector == null) {
+            setMetricsCollector(new NoOpMetricsCollector());
+        }
+        MockConnection mockConnection = new MockConnection(mockNode, getMetricsCollector());
+        return mockConnection;
     }
 }

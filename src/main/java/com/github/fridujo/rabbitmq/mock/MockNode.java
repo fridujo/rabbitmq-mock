@@ -71,8 +71,8 @@ public class MockNode implements ReceiverRegistry {
         return new AMQImpl.Exchange.UnbindOk();
     }
 
-    public AMQP.Queue.DeclareOk queueDeclare(String queueName, boolean durable, boolean exclusive, boolean autoDelete, Map<String, Object> arguments) {
-        queues.putIfAbsent(queueName, new MockQueue(queueName, arguments, this));
+    public AMQP.Queue.DeclareOk queueDeclare(String queueName, boolean durable, boolean exclusive, boolean autoDelete, Map<String, Object> arguments, MockChannel mockChannel) {
+        queues.putIfAbsent(queueName, new MockQueue(queueName, arguments, this, mockChannel));
         return new AMQP.Queue.DeclareOk.Builder()
             .queue(queueName)
             .build();

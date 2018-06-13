@@ -3,7 +3,6 @@ package com.github.fridujo.rabbitmq.mock;
 import com.rabbitmq.client.AlreadyClosedException;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
-import com.rabbitmq.client.ShutdownSignalException;
 import com.rabbitmq.client.impl.AMQConnection;
 import com.rabbitmq.client.impl.DefaultExceptionHandler;
 import org.assertj.core.api.SoftAssertions;
@@ -95,8 +94,7 @@ class MockConnectionTest {
             connection.close();
 
             assertThatExceptionOfType(AlreadyClosedException.class)
-                .isThrownBy(() -> connection.createChannel())
-                .withCauseExactlyInstanceOf(ShutdownSignalException.class);
+                .isThrownBy(() -> connection.createChannel());
         }
     }
 
