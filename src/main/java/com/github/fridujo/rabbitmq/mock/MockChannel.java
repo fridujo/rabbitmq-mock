@@ -363,7 +363,9 @@ public class MockChannel implements Channel {
     @Override
     public GetResponse basicGet(String queue, boolean autoAck) {
         GetResponse getResponse = node.basicGet(lastGeneratedIfEmpty(queue), autoAck, this::nextDeliveryTag);
-        metricsCollector.consumedMessage(this, getResponse.getEnvelope().getDeliveryTag(), autoAck);
+        if(getResponse != null) {
+            metricsCollector.consumedMessage(this, getResponse.getEnvelope().getDeliveryTag(), autoAck);
+        }
         return getResponse;
     }
 
