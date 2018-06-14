@@ -20,22 +20,23 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 public class MockConnection implements Connection {
 
     private final AtomicBoolean opened = new AtomicBoolean(true);
     private final AtomicInteger channelSequence = new AtomicInteger();
     private final MockNode mockNode;
-    private final MetricsCollector metricsCollector;
+    private final Supplier<MetricsCollector> metricsCollector;
     private final InetAddress address;
     private final DefaultExceptionHandler exceptionHandler = new DefaultExceptionHandler();
     private String id;
 
-    public MockConnection(MockNode mockNode, MetricsCollector metricsCollector) {
+    public MockConnection(MockNode mockNode, Supplier<MetricsCollector> metricsCollector) {
         this.mockNode = mockNode;
         this.metricsCollector = metricsCollector;
         this.address = new InetSocketAddress("127.0.0.1", 0).getAddress();
-        this.metricsCollector.newConnection(this);
+        this.metricsCollector.get().newConnection(this);
     }
 
     @Override
@@ -108,7 +109,7 @@ public class MockConnection implements Connection {
 
     @Override
     public void close(int closeCode, String closeMessage, int timeout) {
-        metricsCollector.closeConnection(this);
+        metricsCollector.get().closeConnection(this);
         opened.set(false);
     }
 
@@ -195,6 +196,6 @@ public class MockConnection implements Connection {
     }
 
     public MetricsCollector getMetricsCollector() {
-        return metricsCollector;
+        return metricsCollector.get();
     }
 }

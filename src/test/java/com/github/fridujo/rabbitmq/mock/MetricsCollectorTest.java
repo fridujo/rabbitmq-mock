@@ -159,4 +159,20 @@ public class MetricsCollectorTest {
             assertThat(registry.get("rabbitmq.consumed").counter().count()).isEqualTo(1);
         }
     }
+
+    @Test
+    void metrics_collector_reference_the_last_set_in_connection_factory() throws IOException, TimeoutException {
+        MockConnectionFactory mockConnectionFactory = new MockConnectionFactory();
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+
+        try (MockConnection connection = mockConnectionFactory.newConnection();
+             Channel channel = connection.createChannel(42)) {
+
+            mockConnectionFactory.setMetricsCollector(new MicrometerMetricsCollector(registry));
+
+            String queueName = channel.queueDeclare().getQueue();
+            channel.basicPublish("", queueName, null, "".getBytes());
+            assertThat(registry.get("rabbitmq.published").counter().count()).isEqualTo(1);
+        }
+    }
 }
