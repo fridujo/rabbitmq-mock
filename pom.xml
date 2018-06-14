@@ -17,16 +17,17 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
 
-        <spring.amqp.version>2.0.3.RELEASE</spring.amqp.version>
         <rabbitmq.client.version>5.2.0</rabbitmq.client.version>
 
         <assertj.version>3.9.1</assertj.version>
         <mockito.version>2.18.3</mockito.version>
         <micrometer.version>1.0.5</micrometer.version>
+        <spring.amqp.version>2.0.3.RELEASE</spring.amqp.version>
         <logback.version>1.2.3</logback.version>
 
-        <junit.jupiter.version>5.1.1</junit.jupiter.version>
-        <junit.platform.version>1.1.1</junit.platform.version>
+        <maven-surefire-plugin.version>2.21.0</maven-surefire-plugin.version>
+        <junit.jupiter.version>5.2.0</junit.jupiter.version>
+        <junit.platform.version>1.2.0</junit.platform.version>
     </properties>
 
     <scm>
@@ -55,12 +56,6 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.springframework.amqp</groupId>
-            <artifactId>spring-rabbit</artifactId>
-            <version>${spring.amqp.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
             <groupId>com.rabbitmq</groupId>
             <artifactId>amqp-client</artifactId>
             <version>${rabbitmq.client.version}</version>
@@ -83,6 +78,12 @@
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-core</artifactId>
             <version>${micrometer.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.amqp</groupId>
+            <artifactId>spring-rabbit</artifactId>
+            <version>${spring.amqp.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -138,7 +139,7 @@
             <plugins>
                 <plugin>
                     <artifactId>maven-surefire-plugin</artifactId>
-                    <version>2.19.1</version>
+                    <version>${maven-surefire-plugin.version}</version>
                     <dependencies>
                         <dependency>
                             <groupId>org.junit.platform</groupId>
