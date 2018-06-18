@@ -7,6 +7,8 @@
 
 Mock for RabbitMQ Java [amqp-client](https://github.com/rabbitmq/rabbitmq-java-client).
 
+> Compatible with version **5.2.0** of [**com.rabbitmq:amqp-client**](https://github.com/rabbitmq/rabbitmq-java-client)
+
 ### Motivation
 
 This project aims to emulate RabbitMQ behavior for test purposes, through:
