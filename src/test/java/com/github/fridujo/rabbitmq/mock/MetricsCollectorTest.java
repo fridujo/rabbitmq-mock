@@ -7,11 +7,14 @@ import com.rabbitmq.client.Envelope;
 import com.rabbitmq.client.GetResponse;
 import com.rabbitmq.client.impl.MicrometerMetricsCollector;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.util.concurrent.Semaphore;
+import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -131,7 +134,7 @@ public class MetricsCollectorTest {
     }
 
     @Test
-    void metrics_collector_is_invoked_on_consumer_consumption() throws IOException, TimeoutException, InterruptedException {
+    void metrics_collector_is_invoked_on_consumer_consumption() throws IOException, TimeoutException {
         MockConnectionFactory mockConnectionFactory = new MockConnectionFactory();
         SimpleMeterRegistry registry = new SimpleMeterRegistry();
         mockConnectionFactory.setMetricsCollector(new MicrometerMetricsCollector(registry));
@@ -139,24 +142,32 @@ public class MetricsCollectorTest {
         try (MockConnection connection = mockConnectionFactory.newConnection();
              Channel channel = connection.createChannel(42)) {
             String queueName = channel.queueDeclare().getQueue();
-            Semaphore semaphore = new Semaphore(0);
             channel.basicConsume("", new DefaultConsumer(channel) {
                 @Override
                 public void handleDelivery(String consumerTag,
                                            Envelope envelope,
                                            AMQP.BasicProperties properties,
                                            byte[] body) {
-                    semaphore.release();
+                    // Handling the message is not the purpose of this test
                 }
 
                 @Override
                 public void handleCancelOk(String consumerTag) {
                 }
             });
-            assertThat(registry.get("rabbitmq.consumed").counter().count()).isEqualTo(0);
+
+            Supplier<Double> publishedMessagesCounter = () -> registry.get("rabbitmq.consumed").counter().count();
+
+            assertThat(publishedMessagesCounter.get()).isEqualTo(0);
+
             channel.basicPublish("", queueName, null, "".getBytes());
-            semaphore.acquire();
-            assertThat(registry.get("rabbitmq.consumed").counter().count()).isEqualTo(1);
+
+            Assertions.assertTimeoutPreemptively(Duration.ofMillis(200L), () -> {
+                while (publishedMessagesCounter.get() == 0) {
+                    TimeUnit.MILLISECONDS.sleep(10L);
+                }
+            });
+            assertThat(publishedMessagesCounter.get()).isEqualTo(1);
         }
     }
 

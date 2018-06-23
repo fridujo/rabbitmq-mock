@@ -1,8 +1,8 @@
 package com.github.fridujo.rabbitmq.mock;
 
+import com.github.fridujo.rabbitmq.mock.metrics.MetricsCollectorWrapper;
 import com.rabbitmq.client.AddressResolver;
 import com.rabbitmq.client.ConnectionFactory;
-import com.rabbitmq.client.NoOpMetricsCollector;
 
 import java.util.concurrent.ExecutorService;
 
@@ -12,7 +12,6 @@ public class MockConnectionFactory extends ConnectionFactory {
 
     public MockConnectionFactory() {
         setAutomaticRecoveryEnabled(false);
-        setMetricsCollector(new NoOpMetricsCollector());
     }
 
     @Override
@@ -21,7 +20,8 @@ public class MockConnectionFactory extends ConnectionFactory {
     }
 
     public MockConnection newConnection() {
-        MockConnection mockConnection = new MockConnection(mockNode, this::getMetricsCollector);
+        MetricsCollectorWrapper metricsCollectorWrapper = MetricsCollectorWrapper.Builder.build(this);
+        MockConnection mockConnection = new MockConnection(mockNode, metricsCollectorWrapper);
         return mockConnection;
     }
 }
