@@ -1,5 +1,6 @@
 package com.github.fridujo.rabbitmq.mock;
 
+import com.github.fridujo.rabbitmq.mock.metrics.MetricsCollectorWrapper;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.AlreadyClosedException;
 import com.rabbitmq.client.BlockedCallback;
@@ -7,7 +8,6 @@ import com.rabbitmq.client.BlockedListener;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ExceptionHandler;
-import com.rabbitmq.client.MetricsCollector;
 import com.rabbitmq.client.ShutdownListener;
 import com.rabbitmq.client.ShutdownSignalException;
 import com.rabbitmq.client.UnblockedCallback;
@@ -20,23 +20,22 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Supplier;
 
 public class MockConnection implements Connection {
 
     private final AtomicBoolean opened = new AtomicBoolean(true);
     private final AtomicInteger channelSequence = new AtomicInteger();
     private final MockNode mockNode;
-    private final Supplier<MetricsCollector> metricsCollector;
+    private final MetricsCollectorWrapper metricsCollectorWrapper;
     private final InetAddress address;
     private final DefaultExceptionHandler exceptionHandler = new DefaultExceptionHandler();
     private String id;
 
-    public MockConnection(MockNode mockNode, Supplier<MetricsCollector> metricsCollector) {
+    public MockConnection(MockNode mockNode, MetricsCollectorWrapper metricsCollectorWrapper) {
         this.mockNode = mockNode;
-        this.metricsCollector = metricsCollector;
+        this.metricsCollectorWrapper = metricsCollectorWrapper;
         this.address = new InetSocketAddress("127.0.0.1", 0).getAddress();
-        this.metricsCollector.get().newConnection(this);
+        this.metricsCollectorWrapper.newConnection(this);
     }
 
     @Override
@@ -89,7 +88,7 @@ public class MockConnection implements Connection {
         if (!isOpen()) {
             throw new AlreadyClosedException(new ShutdownSignalException(false, true, null, this));
         }
-        return new MockChannel(channelNumber, mockNode, this, metricsCollector);
+        return new MockChannel(channelNumber, mockNode, this, metricsCollectorWrapper);
     }
 
     @Override
@@ -109,7 +108,7 @@ public class MockConnection implements Connection {
 
     @Override
     public void close(int closeCode, String closeMessage, int timeout) {
-        metricsCollector.get().closeConnection(this);
+        metricsCollectorWrapper.closeConnection(this);
         opened.set(false);
     }
 
@@ -193,9 +192,5 @@ public class MockConnection implements Connection {
     @Override
     public boolean isOpen() {
         return opened.get();
-    }
-
-    public MetricsCollector getMetricsCollector() {
-        return metricsCollector.get();
     }
 }
