@@ -1,4 +1,5 @@
 # RabbitMQ-mock
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/eddfd3e0ca8c44379becf68efd6524af)](https://app.codacy.com/app/ledoyen/rabbitmq-mock?utm_source=github.com&utm_medium=referral&utm_content=fridujo/rabbitmq-mock&utm_campaign=badger)
 [![Build Status](https://travis-ci.com/fridujo/rabbitmq-mock.svg?branch=master)](https://travis-ci.com/fridujo/rabbitmq-mock)
 [![Coverage Status](https://codecov.io/gh/fridujo/rabbitmq-mock/branch/master/graph/badge.svg)](https://codecov.io/gh/fridujo/rabbitmq-mock/)
 [![Maven Central](https://img.shields.io/maven-central/v/com.github.fridujo/rabbitmq-mock.svg)](https://search.maven.org/#search|ga|1|a:"rabbitmq-mock")
