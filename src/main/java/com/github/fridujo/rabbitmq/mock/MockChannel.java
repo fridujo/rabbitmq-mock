@@ -469,7 +469,9 @@ public class MockChannel implements Channel {
 
     @Override
     public String basicConsume(String queue, boolean autoAck, String consumerTag, boolean noLocal, boolean exclusive, Map<String, Object> arguments, Consumer callback) {
-        return node.basicConsume(lastGeneratedIfEmpty(queue), autoAck, consumerTag, noLocal, exclusive, nullToEmpty(arguments), callback, this::nextDeliveryTag);
+        String serverConsumerTag = node.basicConsume(lastGeneratedIfEmpty(queue), autoAck, consumerTag, noLocal, exclusive, nullToEmpty(arguments), callback, this::nextDeliveryTag);
+        metricsCollectorWrapper.basicConsume(this, serverConsumerTag, autoAck);
+        return serverConsumerTag;
     }
 
     @Override
@@ -491,6 +493,7 @@ public class MockChannel implements Channel {
     public void basicCancel(String consumerTag) {
         // Called when BlockingQueueConsumer#basicCancel (after AbstractMessageListenerContainer#stop)
         node.basicCancel(consumerTag);
+        metricsCollectorWrapper.basicCancel(this, consumerTag);
     }
 
     @Override
