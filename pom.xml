@@ -17,19 +17,21 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
 
-        <rabbitmq.client.version>5.2.0</rabbitmq.client.version>
+        <rabbitmq.client.version>5.3.0</rabbitmq.client.version>
 
-        <assertj.version>3.9.1</assertj.version>
-        <mockito.version>2.18.3</mockito.version>
+        <assertj.version>3.10.0</assertj.version>
+        <mockito.version>2.19.0</mockito.version>
         <micrometer.version>1.0.5</micrometer.version>
-        <spring.amqp.version>2.0.3.RELEASE</spring.amqp.version>
+        <spring.amqp.version>2.0.4.RELEASE</spring.amqp.version>
         <logback.version>1.2.3</logback.version>
 
-        <maven-surefire-plugin.version>2.21.0</maven-surefire-plugin.version>
         <junit.jupiter.version>5.2.0</junit.jupiter.version>
         <junit.platform.version>1.2.0</junit.platform.version>
 
+        <maven-surefire-plugin.version>2.22.0</maven-surefire-plugin.version>
+        <maven-invoker-plugin.version>3.1.0</maven-invoker-plugin.version>
         <nexus-staging-maven-plugin.version>1.6.8</nexus-staging-maven-plugin.version>
+        <cobertura-maven-plugin.version>2.7</cobertura-maven-plugin.version>
     </properties>
 
     <scm>
@@ -140,7 +142,7 @@
 
             <plugin>
                 <artifactId>maven-invoker-plugin</artifactId>
-                <version>3.1.0</version>
+                <version>${maven-invoker-plugin.version}</version>
                 <configuration>
                     <projectsDirectory>src/it</projectsDirectory>
                     <cloneProjectsTo>${project.build.directory}/it</cloneProjectsTo>
@@ -220,7 +222,7 @@
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>cobertura-maven-plugin</artifactId>
-                    <version>2.7</version>
+                    <version>${cobertura-maven-plugin.version}</version>
                     <configuration>
                         <formats>
                             <format>html</format>

@@ -5,6 +5,10 @@ import com.rabbitmq.client.ConnectionFactory;
 
 import static com.github.fridujo.rabbitmq.mock.tool.Classes.missingClass;
 
+/**
+ * Factory building a mock implementation of {@link ConnectionFactory} according to the
+ * version of **amqp-client** present in the classpath.
+ */
 public class MockConnectionFactoryFactory {
 
     public static ConnectionFactory build() {
@@ -20,6 +24,4 @@ public class MockConnectionFactoryFactory {
             return new MockConnectionFactory();
         }
     }
-
-
 }
