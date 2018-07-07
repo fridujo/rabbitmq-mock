@@ -1,5 +1,8 @@
 package com.github.fridujo.rabbitmq.mock;
 
+import com.github.fridujo.rabbitmq.mock.exchange.MockDefaultExchange;
+import com.github.fridujo.rabbitmq.mock.exchange.MockExchange;
+import com.github.fridujo.rabbitmq.mock.exchange.MockExchangeFactory;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Consumer;
 import com.rabbitmq.client.GetResponse;
@@ -43,7 +46,7 @@ public class MockNode implements ReceiverRegistry {
         return definitiveConsumerTag;
     }
 
-    Optional<MockQueue> getQueue(String name) {
+    public Optional<MockQueue> getQueue(String name) {
         return Optional.ofNullable(queues.get(name));
     }
 

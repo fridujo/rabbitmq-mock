@@ -1,5 +1,6 @@
-package com.github.fridujo.rabbitmq.mock;
+package com.github.fridujo.rabbitmq.mock.exchange;
 
+import com.github.fridujo.rabbitmq.mock.ReceiverRegistry;
 import com.rabbitmq.client.BuiltinExchangeType;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
