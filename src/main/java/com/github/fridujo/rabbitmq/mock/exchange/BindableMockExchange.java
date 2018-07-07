@@ -1,5 +1,8 @@
-package com.github.fridujo.rabbitmq.mock;
+package com.github.fridujo.rabbitmq.mock.exchange;
 
+import com.github.fridujo.rabbitmq.mock.Receiver;
+import com.github.fridujo.rabbitmq.mock.ReceiverPointer;
+import com.github.fridujo.rabbitmq.mock.ReceiverRegistry;
 import com.rabbitmq.client.AMQP;
 
 import java.util.Collections;
@@ -46,7 +49,7 @@ public abstract class BindableMockExchange implements MockExchange {
     }
 
     private Optional<Receiver> getAlternateExchange() {
-        return Optional.ofNullable(arguments.get(ALTERNATE_EXCHANGE_KEY))
+        return Optional.ofNullable(arguments.get(Receiver.ALTERNATE_EXCHANGE_KEY))
             .filter(aeObject -> aeObject instanceof String)
             .map(String.class::cast)
             .map(aeName -> new ReceiverPointer(ReceiverPointer.Type.EXCHANGE, aeName))

@@ -1,4 +1,6 @@
-package com.github.fridujo.rabbitmq.mock;
+package com.github.fridujo.rabbitmq.mock.exchange;
+
+import com.github.fridujo.rabbitmq.mock.ReceiverRegistry;
 
 import java.util.Map;
 

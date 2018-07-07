@@ -1,13 +1,15 @@
-package com.github.fridujo.rabbitmq.mock;
+package com.github.fridujo.rabbitmq.mock.exchange;
 
+import com.github.fridujo.rabbitmq.mock.MockNode;
+import com.github.fridujo.rabbitmq.mock.ReceiverPointer;
 import com.rabbitmq.client.AMQP;
 
 import java.util.Map;
 
-class MockDefaultExchange implements MockExchange {
+public class MockDefaultExchange implements MockExchange {
     private final MockNode node;
 
-    MockDefaultExchange(MockNode mockNode) {
+    public MockDefaultExchange(MockNode mockNode) {
         this.node = mockNode;
     }
 

@@ -2,7 +2,7 @@ package com.github.fridujo.rabbitmq.mock;
 
 import java.util.Objects;
 
-class ReceiverPointer {
+public class ReceiverPointer {
     final Type type;
     final String name;
 
