@@ -59,25 +59,29 @@ public class MockQueue implements Receiver {
         if (consumersByTag.size() > 0) {
             Message message = messages.poll();
             if (message != null) {
-                int index = sequence.incrementAndGet() % consumersByTag.size();
-                ConsumerAndTag nextConsumer = new ArrayList<>(consumersByTag.values()).get(index);
-                long deliveryTag = nextConsumer.deliveryTagSupplier.get();
-                unackedMessagesByDeliveryTag.put(deliveryTag, message);
+                if (message.isExpired()) {
+                    deadLetter(message);
+                } else {
+                    int index = sequence.incrementAndGet() % consumersByTag.size();
+                    ConsumerAndTag nextConsumer = new ArrayList<>(consumersByTag.values()).get(index);
+                    long deliveryTag = nextConsumer.deliveryTagSupplier.get();
+                    unackedMessagesByDeliveryTag.put(deliveryTag, message);
 
-                Envelope envelope = new Envelope(deliveryTag,
-                    false,
-                    message.exchangeName,
-                    message.routingKey);
-                try {
-                    nextConsumer.consumer.handleDelivery(nextConsumer.tag, envelope, message.props, message.body);
-                    mockChannel.getMetricsCollector().consumedMessage(mockChannel, deliveryTag, nextConsumer.tag);
-                    if (nextConsumer.autoAck) {
-                        unackedMessagesByDeliveryTag.remove(deliveryTag);
+                    Envelope envelope = new Envelope(deliveryTag,
+                        false,
+                        message.exchangeName,
+                        message.routingKey);
+                    try {
+                        nextConsumer.consumer.handleDelivery(nextConsumer.tag, envelope, message.props, message.body);
+                        mockChannel.getMetricsCollector().consumedMessage(mockChannel, deliveryTag, nextConsumer.tag);
+                        if (nextConsumer.autoAck) {
+                            unackedMessagesByDeliveryTag.remove(deliveryTag);
+                        }
+                        delivered = true;
+                    } catch (IOException e) {
+                        LOGGER.warn("Unable to deliver message to consumer [" + nextConsumer.tag + "]");
+                        basicReject(deliveryTag, true);
                     }
-                    delivered = true;
-                } catch (IOException e) {
-                    LOGGER.warn("Unable to deliver message to consumer [" + nextConsumer.tag + "]");
-                    basicReject(deliveryTag, true);
                 }
             }
         }
@@ -89,7 +93,8 @@ public class MockQueue implements Receiver {
             exchangeName,
             routingKey,
             props,
-            body
+            body,
+            computeExpiryTime(props)
         ));
     }
 
@@ -107,19 +112,24 @@ public class MockQueue implements Receiver {
         long deliveryTag = deliveryTagSupplier.get();
         Message message = messages.poll();
         if (message != null) {
-            if (!autoAck) {
-                unackedMessagesByDeliveryTag.put(deliveryTag, message);
+            if (message.isExpired()) {
+                deadLetter(message);
+                return null;
+            } else {
+                if (!autoAck) {
+                    unackedMessagesByDeliveryTag.put(deliveryTag, message);
+                }
+                Envelope envelope = new Envelope(
+                    deliveryTag,
+                    false,
+                    message.exchangeName,
+                    message.routingKey);
+                return new GetResponse(
+                    envelope,
+                    message.props,
+                    message.body,
+                    messages.size());
             }
-            Envelope envelope = new Envelope(
-                deliveryTag,
-                false,
-                message.exchangeName,
-                message.routingKey);
-            return new GetResponse(
-                envelope,
-                message.props,
-                message.body,
-                messages.size());
         } else {
             return null;
         }
@@ -147,22 +157,18 @@ public class MockQueue implements Receiver {
             if (requeue) {
                 messages.offer(nacked);
             } else {
-                getDeadLetterExchange().ifPresent(deadLetterExchange -> deadLetterExchange.publish(
-                    nacked.exchangeName,
-                    nacked.routingKey,
-                    nacked.props,
-                    nacked.body)
-                );
+                deadLetter(nacked);
             }
         }
     }
 
-    private Optional<Receiver> getDeadLetterExchange() {
-        return Optional.ofNullable(arguments.get(DEAD_LETTER_EXCHANGE_KEY))
-            .filter(aeObject -> aeObject instanceof String)
-            .map(String.class::cast)
-            .map(aeName -> new ReceiverPointer(ReceiverPointer.Type.EXCHANGE, aeName))
-            .flatMap(receiverRegistry::getReceiver);
+    private void deadLetter(Message message) {
+        getDeadLetterExchange().ifPresent(deadLetterExchange -> deadLetterExchange.publish(
+            message.exchangeName,
+            message.routingKey,
+            message.props,
+            message.body)
+        );
     }
 
     public void basicCancel(String consumerTag) {
@@ -215,6 +221,51 @@ public class MockQueue implements Receiver {
         }
     }
 
+    private Optional<Receiver> getDeadLetterExchange() {
+        return Optional.ofNullable(arguments.get(DEAD_LETTER_EXCHANGE_KEY))
+            .filter(aeObject -> aeObject instanceof String)
+            .map(String.class::cast)
+            .map(aeName -> new ReceiverPointer(ReceiverPointer.Type.EXCHANGE, aeName))
+            .flatMap(receiverRegistry::getReceiver);
+    }
+
+    private long computeExpiryTime(AMQP.BasicProperties props) {
+        return getMessageTtl(props)
+            .orElseGet(() ->
+                getMessageTtlOfQueue()
+                    .map(ttl -> System.currentTimeMillis() + ttl)
+                    .orElse(-1L)
+            );
+    }
+
+    private Optional<Long> getMessageTtl(AMQP.BasicProperties props) {
+        return Optional.ofNullable(props.getExpiration())
+            .flatMap(this::toLong);
+    }
+
+    private Optional<Long> getMessageTtlOfQueue() {
+        return Optional.ofNullable(arguments.get(MESSAGE_TTL_KEY))
+            .filter(aeObject -> aeObject instanceof Number)
+            .map(Number.class::cast)
+            .map(number -> number.longValue());
+    }
+
+    private Optional<Long> toLong(String s) {
+        try {
+            return Optional.of(Long.parseLong(s));
+        } catch (NumberFormatException e) {
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public String toString() {
+        return "MockQueue{" +
+            "name='" + name + '\'' +
+            ", arguments=" + arguments +
+            '}';
+    }
+
     static class ConsumerAndTag {
         private final String tag;
         private final Consumer consumer;
@@ -229,17 +280,23 @@ public class MockQueue implements Receiver {
         }
     }
 
-    static class Message {
-        final String exchangeName;
-        final String routingKey;
-        final AMQP.BasicProperties props;
-        final byte[] body;
+    private static class Message {
+        private final String exchangeName;
+        private final String routingKey;
+        private final AMQP.BasicProperties props;
+        private final byte[] body;
+        private final long expiryTime;
 
-        Message(String exchangeName, String routingKey, AMQP.BasicProperties props, byte[] body) {
+        private Message(String exchangeName, String routingKey, AMQP.BasicProperties props, byte[] body, long expiryTime) {
             this.exchangeName = exchangeName;
             this.routingKey = routingKey;
             this.props = props;
             this.body = body;
+            this.expiryTime = expiryTime;
+        }
+
+        private boolean isExpired() {
+            return expiryTime > -1 && System.currentTimeMillis() > expiryTime;
         }
     }
 }
