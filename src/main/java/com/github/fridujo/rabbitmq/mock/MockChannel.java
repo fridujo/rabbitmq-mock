@@ -287,7 +287,7 @@ public class MockChannel implements Channel {
 
     @Override
     public AMQP.Queue.DeclareOk queueDeclare(String queue, boolean durable, boolean exclusive, boolean autoDelete, Map<String, Object> arguments) {
-        return node.queueDeclare(generateIfEmpty(queue), durable, exclusive, autoDelete, arguments, this);
+        return node.queueDeclare(generateIfEmpty(queue), durable, exclusive, autoDelete, nullToEmpty(arguments), this);
     }
 
     @Override
