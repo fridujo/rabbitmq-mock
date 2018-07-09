@@ -3,15 +3,19 @@ package com.github.fridujo.rabbitmq.mock;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.ConfirmListener;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.DefaultConsumer;
 import com.rabbitmq.client.Envelope;
 import com.rabbitmq.client.GetResponse;
+import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -20,6 +24,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 
 class ExtensionTest {
 
@@ -191,6 +197,152 @@ class ExtensionTest {
                     TimeUnit.MILLISECONDS.sleep(100L);
                     GetResponse getResponse = channel.basicGet("fruits", true);
                     assertThat(getResponse).isNotNull();
+                }
+            }
+        }
+    }
+
+    @Nested
+    class PublisherConfirms {
+
+        @Test
+        void confirmSelect_on_transactional_channel_throws() throws IOException, TimeoutException {
+            try (Connection conn = new MockConnectionFactory().newConnection()) {
+                try (Channel channel = conn.createChannel()) {
+                    channel.txSelect();
+                    assertThatExceptionOfType(IllegalStateException.class)
+                        .isThrownBy(() -> channel.confirmSelect())
+                        .withMessage("A transactional channel cannot be put into confirm mode");
+                }
+            }
+        }
+
+        @Test
+        void txSelect_on_confirm_channel_throws() throws IOException, TimeoutException {
+            try (Connection conn = new MockConnectionFactory().newConnection()) {
+                try (Channel channel = conn.createChannel()) {
+                    channel.confirmSelect();
+                    assertThatExceptionOfType(IllegalStateException.class)
+                        .isThrownBy(() -> channel.txSelect())
+                        .withMessage("Once a channel is in confirm mode, it cannot be made transactional");
+                }
+            }
+        }
+
+        @Test
+        void getNextPublishSeqNo_returns_zero_out_of_confirm_mode() throws IOException, TimeoutException {
+            try (Connection conn = new MockConnectionFactory().newConnection()) {
+                try (Channel channel = conn.createChannel()) {
+                    assertThat(channel.getNextPublishSeqNo()).isEqualTo(0L);
+                }
+            }
+        }
+
+        @Test
+        void getNextPublishSeqNo_returns_the_next_message_count_in_confirm_mode() throws IOException, TimeoutException {
+            try (Connection conn = new MockConnectionFactory().newConnection()) {
+                try (Channel channel = conn.createChannel()) {
+                    assertThat(channel.confirmSelect()).isNotNull();
+                    assertThat(channel.getNextPublishSeqNo()).isEqualTo(1L);
+
+                    channel.basicPublish("", "vegetable.carrot", null, "carrot".getBytes());
+
+                    assertThat(channel.getNextPublishSeqNo()).isEqualTo(2L);
+                }
+            }
+        }
+
+        @Test
+        void confirm_listeners_are_notified() throws IOException, TimeoutException {
+            try (Connection conn = new MockConnectionFactory().newConnection()) {
+                try (Channel channel = conn.createChannel()) {
+                    assertThat(channel.confirmSelect()).isNotNull();
+
+                    List<Long> firstConfirmedMessages = new ArrayList<>();
+                    List<Long> firstUnconfirmedMessages = new ArrayList<>();
+                    ConfirmListener firstListener = new ConfirmListener() {
+                        @Override
+                        public void handleAck(long deliveryTag, boolean multiple) {
+                            firstConfirmedMessages.add(deliveryTag);
+                        }
+
+                        @Override
+                        public void handleNack(long deliveryTag, boolean multiple) {
+                            firstUnconfirmedMessages.add(deliveryTag);
+                        }
+                    };
+                    channel.addConfirmListener(firstListener);
+                    List<Long> secondConfirmedMessages = new ArrayList<>();
+                    List<Long> secondUnconfirmedMessages = new ArrayList<>();
+                    ConfirmListener secondListener = channel.addConfirmListener(
+                        (deliveryTag, multiple) -> secondConfirmedMessages.add(deliveryTag),
+                        (deliveryTag, multiple) -> secondUnconfirmedMessages.add(deliveryTag));
+
+                    channel.basicPublish("", "vegetable.carrot", null, "carrot".getBytes());
+
+                    assertThat(firstConfirmedMessages).containsExactly(1L);
+                    assertThat(firstUnconfirmedMessages).isEmpty();
+                    assertThat(secondConfirmedMessages).containsExactly(1L);
+                    assertThat(secondUnconfirmedMessages).isEmpty();
+
+                    assertThat(channel.removeConfirmListener(secondListener)).isTrue();
+
+                    channel.basicPublish("", "vegetable.carrot", null, "carrot".getBytes());
+
+                    assertThat(firstConfirmedMessages).containsExactly(1L, 2L);
+                    assertThat(firstUnconfirmedMessages).isEmpty();
+                    assertThat(secondConfirmedMessages).containsExactly(1L);
+                    assertThat(secondUnconfirmedMessages).isEmpty();
+
+                    channel.clearConfirmListeners();
+
+                    channel.basicPublish("", "vegetable.carrot", null, "carrot".getBytes());
+
+                    assertThat(firstConfirmedMessages).containsExactly(1L, 2L);
+                    assertThat(firstUnconfirmedMessages).isEmpty();
+                    assertThat(secondConfirmedMessages).containsExactly(1L);
+                    assertThat(secondUnconfirmedMessages).isEmpty();
+                }
+            }
+        }
+
+        @TestFactory
+        List<DynamicTest> waitForConfirms_returns_true_in_confirm_mode() {
+            boolean confirmMode = true;
+            return Arrays.asList(
+                dynamicTest("waitForConfirms", () -> executeInChannel(confirmMode, channel ->
+                    assertThat(channel.waitForConfirms()).isTrue())),
+                dynamicTest("waitForConfirms(timeout)", () -> executeInChannel(confirmMode, channel ->
+                    assertThat(channel.waitForConfirms(0L)).isTrue())),
+                dynamicTest("waitForConfirmsOrDie", () -> executeInChannel(confirmMode, channel ->
+                    channel.waitForConfirmsOrDie())),
+                dynamicTest("waitForConfirmsOrDie(timeout)", () -> executeInChannel(confirmMode, channel ->
+                    channel.waitForConfirmsOrDie(0L)))
+            );
+        }
+
+        @TestFactory
+        List<DynamicTest> waitForConfirms_throws_out_of_confirm_mode() {
+            boolean confirmMode = false;
+            return Arrays.asList(
+                dynamicTest("waitForConfirms", () -> executeInChannel(confirmMode, channel ->
+                    assertThatExceptionOfType(IllegalStateException.class).isThrownBy(() -> channel.waitForConfirms()))),
+                dynamicTest("waitForConfirms(timeout)", () -> executeInChannel(confirmMode, channel ->
+                    assertThatExceptionOfType(IllegalStateException.class).isThrownBy(() -> channel.waitForConfirms(0L)))),
+                dynamicTest("waitForConfirmsOrDie", () -> executeInChannel(confirmMode, channel ->
+                    assertThatExceptionOfType(IllegalStateException.class).isThrownBy(() -> channel.waitForConfirmsOrDie()))),
+                dynamicTest("waitForConfirmsOrDie(timeout)", () -> executeInChannel(confirmMode, channel ->
+                    assertThatExceptionOfType(IllegalStateException.class).isThrownBy(() -> channel.waitForConfirmsOrDie(0L))))
+            );
+        }
+
+        private void executeInChannel(boolean confirmMode, java.util.function.Consumer<MockChannel> action) {
+            try (MockConnection conn = new MockConnectionFactory().newConnection()) {
+                try (MockChannel channel = conn.createChannel()) {
+                    if (confirmMode) {
+                        channel.confirmSelect();
+                    }
+                    action.accept(channel);
                 }
             }
         }
