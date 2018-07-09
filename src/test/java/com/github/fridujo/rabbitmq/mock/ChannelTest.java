@@ -494,7 +494,7 @@ class ChannelTest {
     void rollback_without_select_throws() throws IOException, TimeoutException {
         try (Connection conn = new MockConnectionFactory().newConnection()) {
             try (Channel channel = conn.createChannel()) {
-                assertThatExceptionOfType(IllegalArgumentException.class)
+                assertThatExceptionOfType(IllegalStateException.class)
                     .isThrownBy(() -> channel.txRollback())
                     .withMessage("No started transaction (make sure you called txSelect before txRollback");
             }
@@ -505,7 +505,7 @@ class ChannelTest {
     void commit_without_select_throws() throws IOException, TimeoutException {
         try (Connection conn = new MockConnectionFactory().newConnection()) {
             try (Channel channel = conn.createChannel()) {
-                assertThatExceptionOfType(IllegalArgumentException.class)
+                assertThatExceptionOfType(IllegalStateException.class)
                     .isThrownBy(() -> channel.txCommit())
                     .withMessage("No started transaction (make sure you called txSelect before txCommit");
             }

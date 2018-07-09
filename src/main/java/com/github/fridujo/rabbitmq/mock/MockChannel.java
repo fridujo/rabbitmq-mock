@@ -18,17 +18,22 @@ import com.rabbitmq.client.ReturnListener;
 import com.rabbitmq.client.ShutdownListener;
 import com.rabbitmq.client.ShutdownSignalException;
 import com.rabbitmq.client.impl.AMQImpl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class MockChannel implements Channel {
+    private static final Logger LOGGER = LoggerFactory.getLogger(MockChannel.class);
     private final int channelNumber;
     private final MockNode node;
     private final MockConnection mockConnection;
@@ -39,9 +44,12 @@ public class MockChannel implements Channel {
         "amq.gen-",
         "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
         22);
+    private final Set<ConfirmListener> confirmListeners = new HashSet<>();
 
     private String lastGeneratedQueueName;
     private Transaction transaction;
+    private boolean confirmMode = false;
+    private long nextPublishSeqNo = 1L;
 
     public MockChannel(int channelNumber, MockNode node, MockConnection mockConnection, MetricsCollectorWrapper metricsCollectorWrapper) {
         this.channelNumber = channelNumber;
@@ -105,22 +113,24 @@ public class MockChannel implements Channel {
 
     @Override
     public void addConfirmListener(ConfirmListener listener) {
-        throw new UnsupportedOperationException();
+        confirmListeners.add(listener);
     }
 
     @Override
     public ConfirmListener addConfirmListener(ConfirmCallback ackCallback, ConfirmCallback nackCallback) {
-        throw new UnsupportedOperationException();
+        ConfirmListener confirmListener = new ConfirmListenerWrapper(ackCallback, nackCallback);
+        addConfirmListener(confirmListener);
+        return confirmListener;
     }
 
     @Override
     public boolean removeConfirmListener(ConfirmListener listener) {
-        throw new UnsupportedOperationException();
+        return confirmListeners.remove(listener);
     }
 
     @Override
     public void clearConfirmListeners() {
-        throw new UnsupportedOperationException();
+        confirmListeners.clear();
     }
 
     @Override
@@ -162,6 +172,10 @@ public class MockChannel implements Channel {
     public void basicPublish(String exchange, String routingKey, boolean mandatory, boolean immediate, AMQP.BasicProperties props, byte[] body) {
         getTransactionOrNode().basicPublish(exchange, routingKey, mandatory, immediate, nullToEmpty(props), body);
         metricsCollectorWrapper.basicPublish(this);
+        if (confirmMode) {
+            safelyInvokeConfirmListeners();
+            nextPublishSeqNo++;
+        }
     }
 
     @Override
@@ -505,6 +519,9 @@ public class MockChannel implements Channel {
 
     @Override
     public AMQP.Tx.SelectOk txSelect() {
+        if (confirmMode) {
+            throw new IllegalStateException("Once a channel is in confirm mode, it cannot be made transactional");
+        }
         if (transaction == null) {
             transaction = new Transaction(this.node);
         }
@@ -514,7 +531,7 @@ public class MockChannel implements Channel {
     @Override
     public AMQP.Tx.CommitOk txCommit() {
         if (transaction == null) {
-            throw new IllegalArgumentException("No started transaction (make sure you called txSelect before txCommit");
+            throw new IllegalStateException("No started transaction (make sure you called txSelect before txCommit");
         }
         transaction.commit();
         transaction = null;
@@ -524,7 +541,7 @@ public class MockChannel implements Channel {
     @Override
     public AMQP.Tx.RollbackOk txRollback() {
         if (transaction == null) {
-            throw new IllegalArgumentException("No started transaction (make sure you called txSelect before txRollback");
+            throw new IllegalStateException("No started transaction (make sure you called txSelect before txRollback");
         }
         transaction = null;
         return new AMQImpl.Tx.RollbackOk();
@@ -532,32 +549,43 @@ public class MockChannel implements Channel {
 
     @Override
     public AMQP.Confirm.SelectOk confirmSelect() {
-        throw new UnsupportedOperationException();
+        if (transaction != null) {
+            throw new IllegalStateException("A transactional channel cannot be put into confirm mode");
+        }
+        confirmMode = true;
+        return new AMQImpl.Confirm.SelectOk();
     }
 
     @Override
     public long getNextPublishSeqNo() {
-        throw new UnsupportedOperationException();
+        if (!confirmMode) {
+            return 0L;
+        } else {
+            return nextPublishSeqNo;
+        }
     }
 
     @Override
-    public boolean waitForConfirms() {
-        throw new UnsupportedOperationException();
+    public boolean waitForConfirms() throws IllegalStateException {
+        if (!confirmMode) {
+            throw new IllegalStateException("Not in confirm mode");
+        }
+        return true;
     }
 
     @Override
-    public boolean waitForConfirms(long timeout) {
-        throw new UnsupportedOperationException();
+    public boolean waitForConfirms(long timeout) throws IllegalStateException {
+        return waitForConfirms();
     }
 
     @Override
     public void waitForConfirmsOrDie() {
-        throw new UnsupportedOperationException();
+        waitForConfirms();
     }
 
     @Override
     public void waitForConfirmsOrDie(long timeout) {
-        throw new UnsupportedOperationException();
+        waitForConfirms(timeout);
     }
 
     @Override
@@ -642,6 +670,16 @@ public class MockChannel implements Channel {
      */
     private TransactionalOperations getTransactionOrNode() {
         return Optional.<TransactionalOperations>ofNullable(transaction).orElse(node);
+    }
+
+    private void safelyInvokeConfirmListeners() {
+        confirmListeners.forEach(confirmListener -> {
+            try {
+                confirmListener.handleAck(nextPublishSeqNo, false);
+            } catch (IOException | RuntimeException e) {
+                LOGGER.warn("ConfirmListener threw an exception " + confirmListener, e);
+            }
+        });
     }
 
     public MetricsCollectorWrapper getMetricsCollector() {

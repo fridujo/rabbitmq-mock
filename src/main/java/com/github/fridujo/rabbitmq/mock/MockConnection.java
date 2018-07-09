@@ -5,7 +5,6 @@ import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.AlreadyClosedException;
 import com.rabbitmq.client.BlockedCallback;
 import com.rabbitmq.client.BlockedListener;
-import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ExceptionHandler;
 import com.rabbitmq.client.ShutdownListener;
@@ -79,12 +78,12 @@ public class MockConnection implements Connection {
     }
 
     @Override
-    public Channel createChannel() throws AlreadyClosedException {
+    public MockChannel createChannel() throws AlreadyClosedException {
         return createChannel(channelSequence.incrementAndGet());
     }
 
     @Override
-    public Channel createChannel(int channelNumber) throws AlreadyClosedException {
+    public MockChannel createChannel(int channelNumber) throws AlreadyClosedException {
         if (!isOpen()) {
             throw new AlreadyClosedException(new ShutdownSignalException(false, true, null, this));
         }
