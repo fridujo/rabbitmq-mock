@@ -415,4 +415,101 @@ class ChannelTest {
             }
         }
     }
+
+    @Test
+    void transaction_commit_propagate_publish_ack_and_reject() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                String firstQueue = channel.queueDeclare().getQueue();
+                String secondQueue = channel.queueDeclare().getQueue();
+
+                channel.basicPublish("", secondQueue, null, "to_ack".getBytes());
+                channel.basicPublish("", secondQueue, null, "to_reject".getBytes());
+                channel.basicPublish("", secondQueue, null, "to_nack".getBytes());
+                assertThat(channel.messageCount(secondQueue)).isEqualTo(3);
+
+                channel.txSelect();
+
+                channel.basicPublish("", firstQueue, null, "test message".getBytes());
+                assertThat(channel.messageCount(firstQueue)).isEqualTo(0L);
+
+                GetResponse getResponse;
+                while ((getResponse = channel.basicGet(secondQueue, false)) != null) {
+                    if (new String(getResponse.getBody()).contains("reject")) {
+                        channel.basicReject(getResponse.getEnvelope().getDeliveryTag(), false);
+                    } else if (new String(getResponse.getBody()).contains("nack")) {
+                        channel.basicNack(getResponse.getEnvelope().getDeliveryTag(), false, false);
+                    } else {
+                        channel.basicAck(getResponse.getEnvelope().getDeliveryTag(), false);
+                    }
+                }
+                assertThat(channel.messageCount(secondQueue)).isEqualTo(0L);
+
+
+                assertThat(channel.txCommit()).isNotNull();
+                assertThat(channel.messageCount(firstQueue)).isEqualTo(1L);
+                assertThat(channel.messageCount(secondQueue)).isEqualTo(0L);
+            }
+        }
+    }
+
+    @Test
+    void transaction_rollback_propagate_publish_ack_and_reject() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                String firstQueue = channel.queueDeclare().getQueue();
+                String secondQueue = channel.queueDeclare().getQueue();
+
+                channel.basicPublish("", secondQueue, null, "to_ack".getBytes());
+                channel.basicPublish("", secondQueue, null, "to_reject".getBytes());
+                channel.basicPublish("", secondQueue, null, "to_nack".getBytes());
+                assertThat(channel.messageCount(secondQueue)).isEqualTo(3);
+
+                channel.txSelect();
+
+                channel.basicPublish("", firstQueue, null, "test message".getBytes());
+                assertThat(channel.messageCount(firstQueue)).isEqualTo(0L);
+
+                GetResponse getResponse;
+                while ((getResponse = channel.basicGet(secondQueue, false)) != null) {
+                    if (new String(getResponse.getBody()).contains("reject")) {
+                        channel.basicReject(getResponse.getEnvelope().getDeliveryTag(), false);
+                    } else if (new String(getResponse.getBody()).contains("nack")) {
+                        channel.basicNack(getResponse.getEnvelope().getDeliveryTag(), false, false);
+                    } else {
+                        channel.basicAck(getResponse.getEnvelope().getDeliveryTag(), false);
+                    }
+                }
+                assertThat(channel.messageCount(secondQueue)).isEqualTo(0L);
+
+
+                assertThat(channel.txRollback()).isNotNull();
+                assertThat(channel.messageCount(firstQueue)).isEqualTo(0L);
+                assertThat(channel.messageCount(secondQueue)).isEqualTo(0L);
+            }
+        }
+    }
+
+    @Test
+    void rollback_without_select_throws() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                assertThatExceptionOfType(IllegalArgumentException.class)
+                    .isThrownBy(() -> channel.txRollback())
+                    .withMessage("No started transaction (make sure you called txSelect before txRollback");
+            }
+        }
+    }
+
+    @Test
+    void commit_without_select_throws() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                assertThatExceptionOfType(IllegalArgumentException.class)
+                    .isThrownBy(() -> channel.txCommit())
+                    .withMessage("No started transaction (make sure you called txSelect before txCommit");
+            }
+        }
+    }
+
 }

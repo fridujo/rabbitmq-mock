@@ -13,7 +13,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
-public class MockNode implements ReceiverRegistry {
+public class MockNode implements ReceiverRegistry, TransactionalOperations {
 
     private final MockDefaultExchange defaultExchange = new MockDefaultExchange(this);
     private final Map<String, MockExchange> exchanges = new ConcurrentHashMap<>();
