@@ -160,7 +160,7 @@ public class MockChannel implements Channel {
 
     @Override
     public void basicPublish(String exchange, String routingKey, boolean mandatory, boolean immediate, AMQP.BasicProperties props, byte[] body) {
-        getTransactionOrSelf().basicPublish(exchange, routingKey, mandatory, immediate, nullToEmpty(props), body);
+        getTransactionOrNode().basicPublish(exchange, routingKey, mandatory, immediate, nullToEmpty(props), body);
         metricsCollectorWrapper.basicPublish(this);
     }
 
@@ -368,19 +368,19 @@ public class MockChannel implements Channel {
 
     @Override
     public void basicAck(long deliveryTag, boolean multiple) {
-        getTransactionOrSelf().basicAck(deliveryTag, multiple);
+        getTransactionOrNode().basicAck(deliveryTag, multiple);
         metricsCollectorWrapper.basicAck(this, deliveryTag, multiple);
     }
 
     @Override
     public void basicNack(long deliveryTag, boolean multiple, boolean requeue) {
-        getTransactionOrSelf().basicNack(deliveryTag, multiple, requeue);
+        getTransactionOrNode().basicNack(deliveryTag, multiple, requeue);
         metricsCollectorWrapper.basicNack(this, deliveryTag);
     }
 
     @Override
     public void basicReject(long deliveryTag, boolean requeue) {
-        getTransactionOrSelf().basicReject(deliveryTag, requeue);
+        getTransactionOrNode().basicReject(deliveryTag, requeue);
         metricsCollectorWrapper.basicReject(this, deliveryTag);
     }
 
@@ -637,7 +637,10 @@ public class MockChannel implements Channel {
         return deliveryTagSequence.incrementAndGet();
     }
 
-    private TransactionalOperations getTransactionOrSelf() {
+    /**
+     * @return either a {@link Transaction} if {@link MockChannel#txSelect()} have been called, or {@link MockNode} otherwise
+     */
+    private TransactionalOperations getTransactionOrNode() {
         return Optional.<TransactionalOperations>ofNullable(transaction).orElse(node);
     }
 
