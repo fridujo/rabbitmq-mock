@@ -18,8 +18,6 @@ import com.rabbitmq.client.ReturnListener;
 import com.rabbitmq.client.ShutdownListener;
 import com.rabbitmq.client.ShutdownSignalException;
 import com.rabbitmq.client.impl.AMQImpl;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -31,8 +29,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class MockChannel implements Channel {
-    private static final Logger LOGGER = LoggerFactory.getLogger(MockChannel.class);
-
     private final int channelNumber;
     private final MockNode node;
     private final MockConnection mockConnection;
@@ -45,6 +41,7 @@ public class MockChannel implements Channel {
         22);
 
     private String lastGeneratedQueueName;
+    private Transaction transaction;
 
     public MockChannel(int channelNumber, MockNode node, MockConnection mockConnection, MetricsCollectorWrapper metricsCollectorWrapper) {
         this.channelNumber = channelNumber;
@@ -163,7 +160,7 @@ public class MockChannel implements Channel {
 
     @Override
     public void basicPublish(String exchange, String routingKey, boolean mandatory, boolean immediate, AMQP.BasicProperties props, byte[] body) {
-        node.basicPublish(exchange, routingKey, mandatory, immediate, nullToEmpty(props), body);
+        getTransactionOrSelf().basicPublish(exchange, routingKey, mandatory, immediate, nullToEmpty(props), body);
         metricsCollectorWrapper.basicPublish(this);
     }
 
@@ -371,19 +368,19 @@ public class MockChannel implements Channel {
 
     @Override
     public void basicAck(long deliveryTag, boolean multiple) {
-        node.basicAck(deliveryTag, multiple);
+        getTransactionOrSelf().basicAck(deliveryTag, multiple);
         metricsCollectorWrapper.basicAck(this, deliveryTag, multiple);
     }
 
     @Override
     public void basicNack(long deliveryTag, boolean multiple, boolean requeue) {
-        node.basicNack(deliveryTag, multiple, requeue);
+        getTransactionOrSelf().basicNack(deliveryTag, multiple, requeue);
         metricsCollectorWrapper.basicNack(this, deliveryTag);
     }
 
     @Override
     public void basicReject(long deliveryTag, boolean requeue) {
-        node.basicReject(deliveryTag, requeue);
+        getTransactionOrSelf().basicReject(deliveryTag, requeue);
         metricsCollectorWrapper.basicReject(this, deliveryTag);
     }
 
@@ -508,17 +505,29 @@ public class MockChannel implements Channel {
 
     @Override
     public AMQP.Tx.SelectOk txSelect() {
-        throw new UnsupportedOperationException();
+        if (transaction == null) {
+            transaction = new Transaction(this.node);
+        }
+        return new AMQImpl.Tx.SelectOk();
     }
 
     @Override
     public AMQP.Tx.CommitOk txCommit() {
-        throw new UnsupportedOperationException();
+        if (transaction == null) {
+            throw new IllegalArgumentException("No started transaction (make sure you called txSelect before txCommit");
+        }
+        transaction.commit();
+        transaction = null;
+        return new AMQImpl.Tx.CommitOk();
     }
 
     @Override
     public AMQP.Tx.RollbackOk txRollback() {
-        throw new UnsupportedOperationException();
+        if (transaction == null) {
+            throw new IllegalArgumentException("No started transaction (make sure you called txSelect before txRollback");
+        }
+        transaction = null;
+        return new AMQImpl.Tx.RollbackOk();
     }
 
     @Override
@@ -626,6 +635,10 @@ public class MockChannel implements Channel {
 
     private long nextDeliveryTag() {
         return deliveryTagSequence.incrementAndGet();
+    }
+
+    private TransactionalOperations getTransactionOrSelf() {
+        return Optional.<TransactionalOperations>ofNullable(transaction).orElse(node);
     }
 
     public MetricsCollectorWrapper getMetricsCollector() {

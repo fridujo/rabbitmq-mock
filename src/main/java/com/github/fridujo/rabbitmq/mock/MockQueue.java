@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -297,6 +298,16 @@ public class MockQueue implements Receiver {
 
         private boolean isExpired() {
             return expiryTime > -1 && System.currentTimeMillis() > expiryTime;
+        }
+
+        @Override
+        public String toString() {
+            return "Message{" +
+                "exchangeName='" + exchangeName + '\'' +
+                ", routingKey='" + routingKey + '\'' +
+                ", body=" + new String(body) +
+                ", expiryTime=" + Instant.ofEpochMilli(expiryTime) +
+                '}';
         }
     }
 }
