@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
@@ -90,6 +91,10 @@ public class MockQueue implements Receiver {
     }
 
     public void publish(String exchangeName, String routingKey, AMQP.BasicProperties props, byte[] body) {
+        boolean queueLengthLimitReached = queueLengthLimitReached() || queueLengthBytesLimitReached();
+        if (queueLengthLimitReached && overflow() == Overflow.REJECT_PUBLISH) {
+            return;
+        }
         messages.offer(new Message(
             exchangeName,
             routingKey,
@@ -97,6 +102,9 @@ public class MockQueue implements Receiver {
             body,
             computeExpiryTime(props)
         ));
+        if (queueLengthLimitReached) {
+            deadLetter(messages.poll());
+        }
     }
 
     @Override
@@ -230,6 +238,37 @@ public class MockQueue implements Receiver {
             .flatMap(receiverRegistry::getReceiver);
     }
 
+    private boolean queueLengthLimitReached() {
+        return Optional.ofNullable(arguments.get(QUEUE_MAX_LENGTH_KEY))
+            .filter(aeObject -> aeObject instanceof Number)
+            .map(Number.class::cast)
+            .map(num -> num.intValue())
+            .filter(limit -> limit > 0)
+            .map(limit -> limit <= messages.size())
+            .orElse(false);
+    }
+
+    private boolean queueLengthBytesLimitReached() {
+        int messageBytesReady = messages.stream().mapToInt(m -> m.body.length).sum();
+        return Optional.ofNullable(arguments.get(QUEUE_MAX_LENGTH_BYTES_KEY))
+            .filter(aeObject -> aeObject instanceof Number)
+            .map(Number.class::cast)
+            .map(num -> num.intValue())
+            .filter(limit -> limit > 0)
+            .map(limit -> {
+                return limit <= messageBytesReady;
+            })
+            .orElse(false);
+    }
+
+    private Overflow overflow() {
+        return Optional.ofNullable(arguments.get(OVERFLOW_KEY))
+            .filter(aeObject -> aeObject instanceof String)
+            .map(String.class::cast)
+            .flatMap(Overflow::parse)
+            .orElse(Overflow.DROP_HEAD);
+    }
+
     private long computeExpiryTime(AMQP.BasicProperties props) {
         return getMessageTtl(props)
             .orElseGet(() ->
@@ -267,7 +306,23 @@ public class MockQueue implements Receiver {
             '}';
     }
 
+
+    private enum Overflow {
+        DROP_HEAD("drop-head"), REJECT_PUBLISH("reject-publish");
+
+        private final String stringValue;
+
+        Overflow(String stringValue) {
+            this.stringValue = stringValue;
+        }
+
+        private static Optional<Overflow> parse(String value) {
+            return Arrays.stream(values()).filter(v -> value.equals(v.stringValue)).findFirst();
+        }
+    }
+
     static class ConsumerAndTag {
+
         private final String tag;
         private final Consumer consumer;
         private final boolean autoAck;
@@ -282,6 +337,7 @@ public class MockQueue implements Receiver {
     }
 
     private static class Message {
+
         private final String exchangeName;
         private final String routingKey;
         private final AMQP.BasicProperties props;

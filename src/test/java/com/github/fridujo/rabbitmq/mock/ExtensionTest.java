@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -343,6 +344,97 @@ class ExtensionTest {
                         channel.confirmSelect();
                     }
                     action.accept(channel);
+                }
+            }
+        }
+    }
+
+    @Nested
+    class QueueLengthLimit {
+
+        @Test
+        void oldest_message_is_dropped_when_length_limit_is_reached() {
+            try (MockConnection conn = new MockConnectionFactory().newConnection()) {
+                try (MockChannel channel = conn.createChannel()) {
+                    Map<String, Object> arguments = new HashMap<>();
+                    arguments.put("x-max-length", 2);
+                    String queueName = channel.queueDeclare("", true, true, false, arguments).getQueue();
+
+                    IntStream.range(0, 6).forEach(i ->
+                        channel.basicPublish("", queueName, null, Integer.valueOf(i).toString().getBytes())
+                    );
+
+                    assertThat(channel.messageCount(""))
+                        .as("Queue length")
+                        .isEqualTo(2);
+
+                    assertThat(new String(channel.basicGet("", true).getBody())).isEqualTo("4");
+                    assertThat(new String(channel.basicGet("", true).getBody())).isEqualTo("5");
+                }
+            }
+        }
+
+        @Test
+        void oldest_message_is_dropped_when_length_bytes_limit_is_reached() {
+            try (MockConnection conn = new MockConnectionFactory().newConnection()) {
+                try (MockChannel channel = conn.createChannel()) {
+                    Map<String, Object> arguments = new HashMap<>();
+                    arguments.put("x-max-length-bytes", 10);
+                    String queueName = channel.queueDeclare("", true, true, false, arguments).getQueue();
+
+                    IntStream.range(0, 6).forEach(i ->
+                        channel.basicPublish("", queueName, null, ("hello " + i).getBytes())
+                    );
+
+                    assertThat(channel.messageCount(""))
+                        .as("Queue length")
+                        .isEqualTo(2);
+
+                    assertThat(new String(channel.basicGet("", true).getBody())).isEqualTo("hello 4");
+                    assertThat(new String(channel.basicGet("", true).getBody())).isEqualTo("hello 5");
+                }
+            }
+        }
+
+        @Test
+        void new_message_is_dropped_when_length_limit_is_reached_and_overflow_is_set_to_reject_publish() {
+            try (MockConnection conn = new MockConnectionFactory().newConnection()) {
+                try (MockChannel channel = conn.createChannel()) {
+                    Map<String, Object> arguments = new HashMap<>();
+                    arguments.put("x-max-length", 2);
+                    arguments.put("x-overflow", "reject-publish");
+                    String queueName = channel.queueDeclare("", true, true, false, arguments).getQueue();
+
+                    IntStream.range(0, 6).forEach(i ->
+                        channel.basicPublish("", queueName, null, Integer.valueOf(i).toString().getBytes())
+                    );
+
+                    assertThat(channel.messageCount(""))
+                        .as("Queue length")
+                        .isEqualTo(2);
+
+                    assertThat(new String(channel.basicGet("", true).getBody())).isEqualTo("0");
+                    assertThat(new String(channel.basicGet("", true).getBody())).isEqualTo("1");
+                }
+            }
+        }
+
+        @Test
+        void negative_limits_are_ignored() {
+            try (MockConnection conn = new MockConnectionFactory().newConnection()) {
+                try (MockChannel channel = conn.createChannel()) {
+                    Map<String, Object> arguments = new HashMap<>();
+                    arguments.put("x-max-length", -2L);
+                    arguments.put("x-max-length-bytes", -42.0D);
+                    String queueName = channel.queueDeclare("", true, true, false, arguments).getQueue();
+
+                    IntStream.range(0, 6).forEach(i ->
+                        channel.basicPublish("", queueName, null, Integer.valueOf(i).toString().getBytes())
+                    );
+
+                    assertThat(channel.messageCount(""))
+                        .as("Queue length")
+                        .isEqualTo(6);
                 }
             }
         }

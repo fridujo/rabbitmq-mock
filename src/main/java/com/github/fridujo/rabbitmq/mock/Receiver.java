@@ -10,6 +10,9 @@ public interface Receiver {
     String DEAD_LETTER_EXCHANGE_KEY = "x-dead-letter-exchange";
     String MESSAGE_TTL_KEY = "x-message-ttl";
     String X_MATCH_KEY = "x-match";
+    String QUEUE_MAX_LENGTH_KEY = "x-max-length";
+    String QUEUE_MAX_LENGTH_BYTES_KEY = "x-max-length-bytes";
+    String OVERFLOW_KEY = "x-overflow";
 
     void publish(String exchangeName, String routingKey, AMQP.BasicProperties props, byte[] body);
 
