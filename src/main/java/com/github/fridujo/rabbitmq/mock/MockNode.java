@@ -51,7 +51,7 @@ public class MockNode implements ReceiverRegistry, TransactionalOperations {
     }
 
     public AMQP.Exchange.DeclareOk exchangeDeclare(String exchangeName, String type, boolean durable, boolean autoDelete, boolean internal, Map<String, Object> arguments) {
-        exchanges.put(exchangeName, MockExchangeFactory.build(exchangeName, type, arguments, this));
+        exchanges.put(exchangeName, MockExchangeFactory.build(exchangeName, type, new AmqArguments(arguments), this));
         return new AMQImpl.Exchange.DeclareOk();
     }
 
@@ -75,7 +75,7 @@ public class MockNode implements ReceiverRegistry, TransactionalOperations {
     }
 
     public AMQP.Queue.DeclareOk queueDeclare(String queueName, boolean durable, boolean exclusive, boolean autoDelete, Map<String, Object> arguments, MockChannel mockChannel) {
-        queues.putIfAbsent(queueName, new MockQueue(queueName, arguments, this, mockChannel));
+        queues.putIfAbsent(queueName, new MockQueue(queueName, new AmqArguments(arguments), this, mockChannel));
         return new AMQP.Queue.DeclareOk.Builder()
             .queue(queueName)
             .build();

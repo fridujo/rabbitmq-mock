@@ -1,5 +1,6 @@
 package com.github.fridujo.rabbitmq.mock.exchange;
 
+import com.github.fridujo.rabbitmq.mock.AmqArguments;
 import com.github.fridujo.rabbitmq.mock.Receiver;
 import com.github.fridujo.rabbitmq.mock.ReceiverPointer;
 import com.github.fridujo.rabbitmq.mock.ReceiverRegistry;
@@ -17,11 +18,11 @@ public abstract class BindableMockExchange implements MockExchange {
 
     private final Set<BindConfiguration> bindConfigurations = new LinkedHashSet<>();
     private final String name;
-    private final Map<String, Object> arguments;
+    private final AmqArguments arguments;
     private final ReceiverPointer pointer;
     private final ReceiverRegistry receiverRegistry;
 
-    protected BindableMockExchange(String name, Map<String, Object> arguments, ReceiverRegistry receiverRegistry) {
+    protected BindableMockExchange(String name, AmqArguments arguments, ReceiverRegistry receiverRegistry) {
         this.name = name;
         this.arguments = arguments;
         this.pointer = new ReceiverPointer(ReceiverPointer.Type.EXCHANGE, name);
@@ -49,11 +50,7 @@ public abstract class BindableMockExchange implements MockExchange {
     }
 
     private Optional<Receiver> getAlternateExchange() {
-        return Optional.ofNullable(arguments.get(Receiver.ALTERNATE_EXCHANGE_KEY))
-            .filter(aeObject -> aeObject instanceof String)
-            .map(String.class::cast)
-            .map(aeName -> new ReceiverPointer(ReceiverPointer.Type.EXCHANGE, aeName))
-            .flatMap(receiverRegistry::getReceiver);
+        return arguments.getAlternateExchange().flatMap(receiverRegistry::getReceiver);
     }
 
     protected abstract boolean match(String bindingKey, Map<String, Object> bindArguments, String routingKey, Map<String, Object> headers);
