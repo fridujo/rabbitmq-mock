@@ -145,6 +145,7 @@ public class MockChannel implements Channel {
 
     @Override
     public void basicQos(int prefetchSize, int prefetchCount, boolean global) {
+        // Nothing to be done
     }
 
     @Override
