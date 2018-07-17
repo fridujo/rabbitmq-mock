@@ -3,6 +3,7 @@ package com.github.fridujo.rabbitmq.mock;
 import com.rabbitmq.client.AMQP;
 
 import java.time.Instant;
+import java.util.Optional;
 
 public class Message {
 
@@ -24,6 +25,10 @@ public class Message {
 
     public boolean isExpired() {
         return expiryTime > -1 && System.currentTimeMillis() > expiryTime;
+    }
+
+    public int priority() {
+        return Optional.ofNullable(props.getPriority()).orElse(0);
     }
 
     @Override
