@@ -439,4 +439,72 @@ class ExtensionTest {
             }
         }
     }
+
+    @Nested
+    class PriorityQueueSupport {
+
+        @Test
+        void nominal_use() {
+            try (MockConnection conn = new MockConnectionFactory().newConnection()) {
+                try (MockChannel channel = conn.createChannel()) {
+                    Map<String, Object> arguments = new HashMap<>();
+                    arguments.put("x-max-priority", 10);
+                    String queueName = channel.queueDeclare("", true, true, false, arguments).getQueue();
+
+                    channel.basicPublish("", queueName, new AMQP.BasicProperties.Builder().priority(2).build(), "first".getBytes());
+                    channel.basicPublish("", queueName, new AMQP.BasicProperties.Builder().priority(6).build(), "second".getBytes());
+                    channel.basicPublish("", queueName, new AMQP.BasicProperties.Builder().priority(4).build(), "third".getBytes());
+
+
+                    assertThat(new String(channel.basicGet("", true).getBody())).isEqualTo("second");
+                    assertThat(new String(channel.basicGet("", true).getBody())).isEqualTo("third");
+                    assertThat(new String(channel.basicGet("", true).getBody())).isEqualTo("first");
+                }
+            }
+        }
+
+        @Test
+        void no_priority_is_considered_zero() {
+            try (MockConnection conn = new MockConnectionFactory().newConnection()) {
+                try (MockChannel channel = conn.createChannel()) {
+                    Map<String, Object> arguments = new HashMap<>();
+                    arguments.put("x-max-priority", 10);
+                    String queueName = channel.queueDeclare("", true, true, false, arguments).getQueue();
+
+                    channel.basicPublish("", queueName, null, "first".getBytes());
+                    channel.basicPublish("", queueName, new AMQP.BasicProperties.Builder().priority(2).build(), "second".getBytes());
+
+
+                    assertThat(new String(channel.basicGet("", true).getBody())).isEqualTo("second");
+                    assertThat(new String(channel.basicGet("", true).getBody())).isEqualTo("first");
+                }
+            }
+        }
+
+        @TestFactory
+        List<DynamicTest> borderline_cases() {
+            return Arrays.asList(
+                dynamicTest("higher_than_max_priority_is_considered_max", () -> withMaxPriority(10)),
+                dynamicTest("max_priority_higher_than_255_is_ignored", () -> withMaxPriority(256)),
+                dynamicTest("max_priority_lower_than_1_is_ignored", () -> withMaxPriority(0))
+            );
+        }
+
+        private void withMaxPriority(int priority) {
+            try (MockConnection conn = new MockConnectionFactory().newConnection()) {
+                try (MockChannel channel = conn.createChannel()) {
+                    Map<String, Object> arguments = new HashMap<>();
+                    arguments.put("x-max-priority", priority);
+                    String queueName = channel.queueDeclare("", true, true, false, arguments).getQueue();
+
+                    channel.basicPublish("", queueName, new AMQP.BasicProperties.Builder().priority(16).build(), "first".getBytes());
+                    channel.basicPublish("", queueName, new AMQP.BasicProperties.Builder().priority(18).build(), "second".getBytes());
+
+
+                    assertThat(new String(channel.basicGet("", true).getBody())).isEqualTo("first");
+                    assertThat(new String(channel.basicGet("", true).getBody())).isEqualTo("second");
+                }
+            }
+        }
+    }
 }

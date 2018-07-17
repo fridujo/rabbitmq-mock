@@ -11,6 +11,7 @@ public class AmqArguments {
     private final String QUEUE_MAX_LENGTH_KEY = "x-max-length";
     private final String QUEUE_MAX_LENGTH_BYTES_KEY = "x-max-length-bytes";
     private final String OVERFLOW_KEY = "x-overflow";
+    private final String MAX_PRIORITY_KEY = "x-max-priority";
 
     private final Map<String, Object> arguments;
 
@@ -49,12 +50,18 @@ public class AmqArguments {
             .map(number -> number.longValue());
     }
 
+    public Optional<Short> queueMaxPriority() {
+        return positiveInteger(MAX_PRIORITY_KEY)
+            .filter(i -> i < 256)
+            .map(Integer::shortValue);
+    }
+
     private Optional<Integer> positiveInteger(String key) {
         return Optional.ofNullable(arguments.get(key))
             .filter(aeObject -> aeObject instanceof Number)
             .map(Number.class::cast)
             .map(num -> num.intValue())
-            .filter(limit -> limit > 0);
+            .filter(i -> i > 0);
     }
 
     private Optional<String> string(String key) {
