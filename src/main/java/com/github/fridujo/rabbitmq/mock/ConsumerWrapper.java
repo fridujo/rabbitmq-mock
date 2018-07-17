@@ -24,10 +24,12 @@ public class ConsumerWrapper implements Consumer {
 
     @Override
     public void handleConsumeOk(String consumerTag) {
+        // Nothing to be done
     }
 
     @Override
     public void handleCancelOk(String consumerTag) {
+        // Nothing to be done
     }
 
     @Override
@@ -46,7 +48,7 @@ public class ConsumerWrapper implements Consumer {
 
     @Override
     public void handleRecoverOk(String consumerTag) {
-
+        // Nothing to be done
     }
 
     @Override
