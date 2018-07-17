@@ -8,14 +8,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.Optional;
+import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -29,21 +27,24 @@ public class MockQueue implements Receiver {
 
     private final String name;
     private final ReceiverPointer pointer;
-    private final Map<String, Object> arguments;
+    private final AmqArguments arguments;
     private final ReceiverRegistry receiverRegistry;
     private final MockChannel mockChannel;
+    private final Queue<Message> messages;
     private final Map<String, ConsumerAndTag> consumersByTag = new LinkedHashMap<>();
-    private final AtomicInteger sequence = new AtomicInteger();
-    private final Queue<Message> messages = new LinkedList<>();
+    private final AtomicInteger consumerRollingSequence = new AtomicInteger();
+    private final AtomicInteger messageSequence = new AtomicInteger();
     private final Map<Long, Message> unackedMessagesByDeliveryTag = new LinkedHashMap<>();
     private final ExecutorService executorService = Executors.newFixedThreadPool(1);
 
-    public MockQueue(String name, Map<String, Object> arguments, ReceiverRegistry receiverRegistry, MockChannel mockChannel) {
+    public MockQueue(String name, AmqArguments arguments, ReceiverRegistry receiverRegistry, MockChannel mockChannel) {
         this.name = name;
         this.pointer = new ReceiverPointer(ReceiverPointer.Type.QUEUE, name);
         this.arguments = arguments;
         this.receiverRegistry = receiverRegistry;
         this.mockChannel = mockChannel;
+
+        messages = new PriorityQueue<>(new MessageComparator(arguments));
         start();
     }
 
@@ -64,7 +65,7 @@ public class MockQueue implements Receiver {
                 if (message.isExpired()) {
                     deadLetter(message);
                 } else {
-                    int index = sequence.incrementAndGet() % consumersByTag.size();
+                    int index = consumerRollingSequence.incrementAndGet() % consumersByTag.size();
                     ConsumerAndTag nextConsumer = new ArrayList<>(consumersByTag.values()).get(index);
                     long deliveryTag = nextConsumer.deliveryTagSupplier.get();
                     unackedMessagesByDeliveryTag.put(deliveryTag, message);
@@ -92,10 +93,11 @@ public class MockQueue implements Receiver {
 
     public void publish(String exchangeName, String routingKey, AMQP.BasicProperties props, byte[] body) {
         boolean queueLengthLimitReached = queueLengthLimitReached() || queueLengthBytesLimitReached();
-        if (queueLengthLimitReached && overflow() == Overflow.REJECT_PUBLISH) {
+        if (queueLengthLimitReached && arguments.overflow() == AmqArguments.Overflow.REJECT_PUBLISH) {
             return;
         }
         messages.offer(new Message(
+            messageSequence.incrementAndGet(),
             exchangeName,
             routingKey,
             props,
@@ -172,12 +174,14 @@ public class MockQueue implements Receiver {
     }
 
     private void deadLetter(Message message) {
-        getDeadLetterExchange().ifPresent(deadLetterExchange -> deadLetterExchange.publish(
-            message.exchangeName,
-            message.routingKey,
-            message.props,
-            message.body)
-        );
+        arguments.getDeadLetterExchange()
+            .flatMap(receiverRegistry::getReceiver)
+            .ifPresent(deadLetterExchange -> deadLetterExchange.publish(
+                message.exchangeName,
+                message.routingKey,
+                message.props,
+                message.body)
+            );
     }
 
     public void basicCancel(String consumerTag) {
@@ -230,49 +234,24 @@ public class MockQueue implements Receiver {
         }
     }
 
-    private Optional<Receiver> getDeadLetterExchange() {
-        return Optional.ofNullable(arguments.get(DEAD_LETTER_EXCHANGE_KEY))
-            .filter(aeObject -> aeObject instanceof String)
-            .map(String.class::cast)
-            .map(aeName -> new ReceiverPointer(ReceiverPointer.Type.EXCHANGE, aeName))
-            .flatMap(receiverRegistry::getReceiver);
-    }
-
     private boolean queueLengthLimitReached() {
-        return Optional.ofNullable(arguments.get(QUEUE_MAX_LENGTH_KEY))
-            .filter(aeObject -> aeObject instanceof Number)
-            .map(Number.class::cast)
-            .map(num -> num.intValue())
-            .filter(limit -> limit > 0)
+        return arguments.queueLengthLimit()
             .map(limit -> limit <= messages.size())
             .orElse(false);
     }
 
     private boolean queueLengthBytesLimitReached() {
         int messageBytesReady = messages.stream().mapToInt(m -> m.body.length).sum();
-        return Optional.ofNullable(arguments.get(QUEUE_MAX_LENGTH_BYTES_KEY))
-            .filter(aeObject -> aeObject instanceof Number)
-            .map(Number.class::cast)
-            .map(num -> num.intValue())
-            .filter(limit -> limit > 0)
-            .map(limit -> {
-                return limit <= messageBytesReady;
-            })
+        return arguments.queueLengthBytesLimit()
+            .map(limit -> limit <= messageBytesReady)
             .orElse(false);
     }
 
-    private Overflow overflow() {
-        return Optional.ofNullable(arguments.get(OVERFLOW_KEY))
-            .filter(aeObject -> aeObject instanceof String)
-            .map(String.class::cast)
-            .flatMap(Overflow::parse)
-            .orElse(Overflow.DROP_HEAD);
-    }
-
     private long computeExpiryTime(AMQP.BasicProperties props) {
+        Optional<Long> messageTtlOfQueue = arguments.getMessageTtlOfQueue();
         return getMessageTtl(props)
             .orElseGet(() ->
-                getMessageTtlOfQueue()
+                messageTtlOfQueue
                     .map(ttl -> System.currentTimeMillis() + ttl)
                     .orElse(-1L)
             );
@@ -281,13 +260,6 @@ public class MockQueue implements Receiver {
     private Optional<Long> getMessageTtl(AMQP.BasicProperties props) {
         return Optional.ofNullable(props.getExpiration())
             .flatMap(this::toLong);
-    }
-
-    private Optional<Long> getMessageTtlOfQueue() {
-        return Optional.ofNullable(arguments.get(MESSAGE_TTL_KEY))
-            .filter(aeObject -> aeObject instanceof Number)
-            .map(Number.class::cast)
-            .map(number -> number.longValue());
     }
 
     private Optional<Long> toLong(String s) {
@@ -306,21 +278,6 @@ public class MockQueue implements Receiver {
             '}';
     }
 
-
-    private enum Overflow {
-        DROP_HEAD("drop-head"), REJECT_PUBLISH("reject-publish");
-
-        private final String stringValue;
-
-        Overflow(String stringValue) {
-            this.stringValue = stringValue;
-        }
-
-        private static Optional<Overflow> parse(String value) {
-            return Arrays.stream(values()).filter(v -> value.equals(v.stringValue)).findFirst();
-        }
-    }
-
     static class ConsumerAndTag {
 
         private final String tag;
@@ -333,37 +290,6 @@ public class MockQueue implements Receiver {
             this.consumer = consumer;
             this.autoAck = autoAck;
             this.deliveryTagSupplier = deliveryTagSupplier;
-        }
-    }
-
-    private static class Message {
-
-        private final String exchangeName;
-        private final String routingKey;
-        private final AMQP.BasicProperties props;
-        private final byte[] body;
-        private final long expiryTime;
-
-        private Message(String exchangeName, String routingKey, AMQP.BasicProperties props, byte[] body, long expiryTime) {
-            this.exchangeName = exchangeName;
-            this.routingKey = routingKey;
-            this.props = props;
-            this.body = body;
-            this.expiryTime = expiryTime;
-        }
-
-        private boolean isExpired() {
-            return expiryTime > -1 && System.currentTimeMillis() > expiryTime;
-        }
-
-        @Override
-        public String toString() {
-            return "Message{" +
-                "exchangeName='" + exchangeName + '\'' +
-                ", routingKey='" + routingKey + '\'' +
-                ", body=" + new String(body) +
-                ", expiryTime=" + Instant.ofEpochMilli(expiryTime) +
-                '}';
         }
     }
 }

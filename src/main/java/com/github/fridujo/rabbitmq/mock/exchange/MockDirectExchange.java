@@ -1,12 +1,13 @@
 package com.github.fridujo.rabbitmq.mock.exchange;
 
+import com.github.fridujo.rabbitmq.mock.AmqArguments;
 import com.github.fridujo.rabbitmq.mock.ReceiverRegistry;
 
 import java.util.Map;
 
 public class MockDirectExchange extends BindableMockExchange {
 
-    public MockDirectExchange(String name, Map<String, Object> arguments, ReceiverRegistry receiverRegistry) {
+    public MockDirectExchange(String name, AmqArguments arguments, ReceiverRegistry receiverRegistry) {
         super(name, arguments, receiverRegistry);
     }
 

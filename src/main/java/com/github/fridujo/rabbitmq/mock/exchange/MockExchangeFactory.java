@@ -1,11 +1,10 @@
 package com.github.fridujo.rabbitmq.mock.exchange;
 
+import com.github.fridujo.rabbitmq.mock.AmqArguments;
 import com.github.fridujo.rabbitmq.mock.ReceiverRegistry;
 
-import java.util.Map;
-
 public abstract class MockExchangeFactory {
-    public static BindableMockExchange build(String exchangeName, String type, Map<String, Object> arguments, ReceiverRegistry receiverRegistry) {
+    public static BindableMockExchange build(String exchangeName, String type, AmqArguments arguments, ReceiverRegistry receiverRegistry) {
         if ("topic".equals(type)) {
             return new MockTopicExchange(exchangeName, arguments, receiverRegistry);
         } else if ("direct".equals(type)) {

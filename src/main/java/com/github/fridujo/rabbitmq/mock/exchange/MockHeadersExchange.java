@@ -1,5 +1,6 @@
 package com.github.fridujo.rabbitmq.mock.exchange;
 
+import com.github.fridujo.rabbitmq.mock.AmqArguments;
 import com.github.fridujo.rabbitmq.mock.ReceiverRegistry;
 
 import java.util.Arrays;
@@ -15,7 +16,7 @@ public class MockHeadersExchange extends BindableMockExchange {
     private static final String MATCH_ALL = "all";
     private static final Set<String> X_MATCH_VALID_VALUES = new HashSet<>(Arrays.asList("any", MATCH_ALL));
 
-    public MockHeadersExchange(String exchangeName, Map<String, Object> arguments, ReceiverRegistry receiverRegistry) {
+    public MockHeadersExchange(String exchangeName, AmqArguments arguments, ReceiverRegistry receiverRegistry) {
         super(exchangeName, arguments, receiverRegistry);
     }
 
