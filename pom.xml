@@ -198,6 +198,18 @@
                             </filterProperties>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>spring-boot-2.1.0.M4</id>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <phase>integration-test</phase>
+                        <configuration>
+                            <filterProperties>
+                                <spring-boot.version>2.1.0.M4</spring-boot.version>
+                            </filterProperties>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
         </plugins>
