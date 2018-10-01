@@ -212,6 +212,18 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.pitest</groupId>
+                <artifactId>pitest-maven</artifactId>
+                <version>1.4.2</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.pitest</groupId>
+                        <artifactId>pitest-junit5-plugin</artifactId>
+                        <version>0.7</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
         </plugins>
         <pluginManagement>
             <plugins>
