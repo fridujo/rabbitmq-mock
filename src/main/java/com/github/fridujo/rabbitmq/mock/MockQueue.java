@@ -1,5 +1,8 @@
 package com.github.fridujo.rabbitmq.mock;
 
+import static com.github.fridujo.rabbitmq.mock.tool.Exceptions.runAndEatExceptions;
+import static com.github.fridujo.rabbitmq.mock.tool.Exceptions.runAndTransformExceptions;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -12,19 +15,20 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Consumer;
 import com.rabbitmq.client.Envelope;
 import com.rabbitmq.client.GetResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MockQueue implements Receiver {
     private static final Logger LOGGER = LoggerFactory.getLogger(MockQueue.class);
+    private static final long SLEEPING_TIME_BETWEEN_SUBMISSIONS_TO_CONSUMERS = 30L;
 
     private final String name;
     private final ReceiverPointer pointer;
@@ -37,6 +41,7 @@ public class MockQueue implements Receiver {
     private final AtomicInteger messageSequence = new AtomicInteger();
     private final Map<Long, Message> unackedMessagesByDeliveryTag = new LinkedHashMap<>();
     private final ExecutorService executorService = Executors.newFixedThreadPool(1);
+    private final AtomicBoolean running = new AtomicBoolean(true);
 
     public MockQueue(String name, AmqArguments arguments, ReceiverRegistry receiverRegistry, MockChannel mockChannel) {
         this.name = name;
@@ -51,9 +56,11 @@ public class MockQueue implements Receiver {
 
     private void start() {
         executorService.submit(() -> {
-            while (true) {
+            while (running.get()) {
                 while (deliverToConsumerIfPossible()) ;
-                TimeUnit.MILLISECONDS.sleep(30L);
+                runAndTransformExceptions(
+                    () -> TimeUnit.MILLISECONDS.sleep(SLEEPING_TIME_BETWEEN_SUBMISSIONS_TO_CONSUMERS),
+                    e -> new RuntimeException("Queue " + name + " consumer Thread have been interrupted", e));
             }
         });
     }
@@ -200,6 +207,21 @@ public class MockQueue implements Receiver {
                 LOGGER.warn("Consumer threw an exception when notified about cancellation", e);
             }
         }
+        close();
+    }
+
+    /**
+     * This methods blocks until the Thread serving Consumers ends.<br>
+     * Considering that Consumers handle messages in no-time, this method should return in max {@value #SLEEPING_TIME_BETWEEN_SUBMISSIONS_TO_CONSUMERS} ms.
+     */
+    public void close() {
+        running.set(false);
+        executorService.shutdown();
+        runAndEatExceptions(() ->
+            executorService.awaitTermination(
+                SLEEPING_TIME_BETWEEN_SUBMISSIONS_TO_CONSUMERS * 3,
+                TimeUnit.MILLISECONDS)
+        );
     }
 
     public void basicRecover(boolean requeue) {
