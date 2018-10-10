@@ -172,4 +172,8 @@ public class MockNode implements ReceiverRegistry, TransactionalOperations {
         MockQueue queue = getQueueUnchecked(queueName);
         return queue.consumerCount();
     }
+
+    public void close() {
+        queues.values().forEach(MockQueue::close);
+    }
 }

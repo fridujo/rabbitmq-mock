@@ -109,6 +109,7 @@ public class MockConnection implements Connection {
     public void close(int closeCode, String closeMessage, int timeout) {
         metricsCollectorWrapper.closeConnection(this);
         opened.set(false);
+        mockNode.close();
     }
 
     @Override
