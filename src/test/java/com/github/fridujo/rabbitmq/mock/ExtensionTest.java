@@ -1,17 +1,8 @@
 package com.github.fridujo.rabbitmq.mock;
 
-import com.rabbitmq.client.AMQP;
-import com.rabbitmq.client.BuiltinExchangeType;
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.ConfirmListener;
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.DefaultConsumer;
-import com.rabbitmq.client.Envelope;
-import com.rabbitmq.client.GetResponse;
-import org.junit.jupiter.api.DynamicTest;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestFactory;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -24,9 +15,19 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.IntStream;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.junit.jupiter.api.DynamicTest.dynamicTest;
+import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestFactory;
+
+import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.BuiltinExchangeType;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.ConfirmListener;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.DefaultConsumer;
+import com.rabbitmq.client.Envelope;
+import com.rabbitmq.client.GetResponse;
 
 class ExtensionTest {
 
@@ -66,6 +67,31 @@ class ExtensionTest {
                 channel.queueDeclare("rejected", true, false, false, null);
                 channel.queueBindNoWait("rejected", "rejected-ex", "unused", null);
                 channel.queueDeclare("fruits", true, false, false, Collections.singletonMap("x-dead-letter-exchange", "rejected-ex"));
+
+                channel.basicPublish("", "fruits", null, "banana".getBytes());
+                GetResponse getResponse = channel.basicGet("fruits", false);
+                channel.basicNack(getResponse.getEnvelope().getDeliveryTag(), false, true);
+                assertThat(channel.messageCount("rejected")).isEqualTo(0);
+                assertThat(channel.messageCount("fruits")).isEqualTo(1);
+
+                getResponse = channel.basicGet("fruits", false);
+                channel.basicReject(getResponse.getEnvelope().getDeliveryTag(), false);
+                assertThat(channel.messageCount("rejected")).isEqualTo(1);
+                assertThat(channel.messageCount("fruits")).isEqualTo(0);
+            }
+        }
+    }
+
+    @Test
+    void dead_letter_routing_key_is_used_when_a_message_is_rejected_without_requeue() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                channel.queueDeclare("rejected", true, false, false, null);
+                channel.queueBindNoWait("rejected", "", "rejected", null);
+                Map<String,Object> queueArgs = new HashMap<>();
+                queueArgs.put("x-dead-letter-routing-key", "rejected");
+                queueArgs.put("x-dead-letter-exchange", "");
+                channel.queueDeclare("fruits", true, false, false, queueArgs);
 
                 channel.basicPublish("", "fruits", null, "banana".getBytes());
                 GetResponse getResponse = channel.basicGet("fruits", false);

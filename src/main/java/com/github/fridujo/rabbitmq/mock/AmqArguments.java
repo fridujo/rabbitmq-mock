@@ -7,6 +7,7 @@ import java.util.Optional;
 public class AmqArguments {
     private final String ALTERNATE_EXCHANGE_KEY = "alternate-exchange";
     private final String DEAD_LETTER_EXCHANGE_KEY = "x-dead-letter-exchange";
+    private final String DEAD_LETTER_ROUTING_KEY_KEY = "x-dead-letter-routing-key";
     private final String MESSAGE_TTL_KEY = "x-message-ttl";
     private final String QUEUE_MAX_LENGTH_KEY = "x-max-length";
     private final String QUEUE_MAX_LENGTH_BYTES_KEY = "x-max-length-bytes";
@@ -27,6 +28,10 @@ public class AmqArguments {
     public Optional<ReceiverPointer> getDeadLetterExchange() {
         return string(DEAD_LETTER_EXCHANGE_KEY)
             .map(aeName -> new ReceiverPointer(ReceiverPointer.Type.EXCHANGE, aeName));
+    }
+
+    public Optional<String> getDeadLetterRoutingKey() {
+        return string(DEAD_LETTER_ROUTING_KEY_KEY);
     }
 
     public Optional<Integer> queueLengthLimit() {
