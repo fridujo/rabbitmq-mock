@@ -1,12 +1,5 @@
 package com.github.fridujo.rabbitmq.mock;
 
-import com.rabbitmq.client.AMQP;
-import com.rabbitmq.client.Consumer;
-import com.rabbitmq.client.Envelope;
-import com.rabbitmq.client.GetResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -21,6 +14,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.Consumer;
+import com.rabbitmq.client.Envelope;
+import com.rabbitmq.client.GetResponse;
 
 public class MockQueue implements Receiver {
     private static final Logger LOGGER = LoggerFactory.getLogger(MockQueue.class);
@@ -178,7 +179,7 @@ public class MockQueue implements Receiver {
             .flatMap(receiverRegistry::getReceiver)
             .ifPresent(deadLetterExchange -> deadLetterExchange.publish(
                 message.exchangeName,
-                message.routingKey,
+                arguments.getDeadLetterRoutingKey().orElse(message.routingKey),
                 message.props,
                 message.body)
             );
