@@ -8,7 +8,7 @@
 
 Mock for RabbitMQ Java [amqp-client](https://github.com/rabbitmq/rabbitmq-java-client).
 
-> Compatible with versions **4.0.0** to **5.3.0** of [**com.rabbitmq:amqp-client**](https://github.com/rabbitmq/rabbitmq-java-client)
+> Compatible with versions **4.0.0** to **5.4.2** of [**com.rabbitmq:amqp-client**](https://github.com/rabbitmq/rabbitmq-java-client)
 
 > Compatible with versions **3.6.3** to **4.0.0** with the [`com.github.fridujo.rabbitmq.mock.compatibility` package](src/main/java/com/github/fridujo/rabbitmq/mock/compatibility/MockConnectionFactoryFactory.java).
 
@@ -64,7 +64,7 @@ Add the following dependency to your **pom.xml**
 <dependency>
     <groupId>com.github.fridujo</groupId>
     <artifactId>rabbitmq-mock</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.5</version>
     <scope>test</scope>
 </dependency>
 ```
@@ -80,7 +80,7 @@ repositories {
 
 dependencies {
 	// ...
-	testCompile('com.github.fridujo:rabbitmq-mock:1.0.3')
+	testCompile('com.github.fridujo:rabbitmq-mock:1.0.5')
 	// ...
 }
 ```
@@ -95,7 +95,7 @@ mvn clean package
 Tests are split in:
 
 * **unit tests** covering features and borderline cases: `mvn test`
-* **integration tests**, seatbelts for integration with Spring and Spring-Boot. These tests use the **maven-invoker-plugin** to launch the same project (in [src/it/spring_boot]) with different versions of the dependencies: `mvn integration-test`
+* **integration tests**, seatbelts for integration with Spring and Spring-Boot. These tests use the **maven-invoker-plugin** to launch the same project (in [src/it/spring_boot](src/it/spring_boot)) with different versions of the dependencies: `mvn integration-test`
 * **mutation tests**, to help understand what is missing in test assertions: `mvn org.pitest:pitest-maven:mutationCoverage`
 
 
@@ -105,3 +105,27 @@ The project can be installed in a local Maven Repository for usage in other proj
 ```
 mvn clean install
 ```
+
+### Using the latest SNAPSHOT
+
+The master of the project pushes SNAPSHOTs in Sonatype's repo.
+
+To use the latest master build add Sonatype OSS snapshot repository, for Maven:
+```
+<repositories>
+    ...
+    <repository>
+        <id>sonatype-oss-spanshots</id>
+        <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    </repository>
+</repositories>
+```
+
+For Gradle:
+```groovy
+repositories {
+	...
+	maven {
+        url "https://oss.sonatype.org/content/repositories/snapshots"
+    }
+}
