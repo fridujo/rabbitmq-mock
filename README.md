@@ -92,12 +92,12 @@ You need [JDK-8](http://jdk.java.net/8/) to build RabbitMQ-Mock. The project can
 mvn clean package
 ```
 
-All integration tests can be launched with Maven using the following command.
-```
-mvn clean test
-```
+Tests are split in:
 
-Since Maven has incremental build support, you can usually omit executing the clean goal.
+* **unit tests** covering features and borderline cases: `mvn test`
+* **integration tests**, seatbelts for integration with Spring and Spring-Boot. These tests use the **maven-invoker-plugin** to launch the same project (in [src/it/spring_boot]) with different versions of the dependencies: `mvn integration-test`
+* **mutation tests**, to help understand what is missing in test assertions: `mvn org.pitest:pitest-maven:mutationCoverage`
+
 
 ### Installing in the Local Maven Repository
 
