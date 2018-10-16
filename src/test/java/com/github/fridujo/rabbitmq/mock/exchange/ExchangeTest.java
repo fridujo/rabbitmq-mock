@@ -1,20 +1,21 @@
 package com.github.fridujo.rabbitmq.mock.exchange;
 
-import com.github.fridujo.rabbitmq.mock.AmqArguments;
-import com.github.fridujo.rabbitmq.mock.ReceiverRegistry;
+import static java.util.Collections.emptyMap;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.mockito.Mockito.mock;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import com.rabbitmq.client.BuiltinExchangeType;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-
-import static java.util.Collections.emptyMap;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.mockito.Mockito.mock;
+import com.github.fridujo.rabbitmq.mock.AmqArguments;
+import com.github.fridujo.rabbitmq.mock.ReceiverRegistry;
 
 class ExchangeTest {
 
@@ -23,7 +24,7 @@ class ExchangeTest {
     }
 
     @Test
-    void mockExchangeFactiry_throws_if_type_is_unknown() {
+    void mockExchangeFactory_throws_if_type_is_unknown() {
         assertThatExceptionOfType(IllegalArgumentException.class)
             .isThrownBy(() -> MockExchangeFactory.build("test", "unknown type", empty(), mock(ReceiverRegistry.class)))
             .withMessage("No exchange type unknown type");
