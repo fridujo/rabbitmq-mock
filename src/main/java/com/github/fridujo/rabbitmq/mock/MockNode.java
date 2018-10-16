@@ -25,7 +25,7 @@ public class MockNode implements ReceiverRegistry, TransactionalOperations {
 
 
     public MockNode() {
-        exchanges.put("", defaultExchange);
+        exchanges.put(MockDefaultExchange.NAME, defaultExchange);
     }
 
     public void basicPublish(String exchangeName, String routingKey, boolean mandatory, boolean immediate, AMQP.BasicProperties props, byte[] body) {

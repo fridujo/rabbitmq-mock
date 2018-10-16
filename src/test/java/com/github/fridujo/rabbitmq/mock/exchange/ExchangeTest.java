@@ -3,18 +3,27 @@ package com.github.fridujo.rabbitmq.mock.exchange;
 import static java.util.Collections.emptyMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 
+import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.ArgumentCaptor;
 
 import com.github.fridujo.rabbitmq.mock.AmqArguments;
+import com.github.fridujo.rabbitmq.mock.MockNode;
+import com.github.fridujo.rabbitmq.mock.MockQueue;
 import com.github.fridujo.rabbitmq.mock.ReceiverRegistry;
 
 class ExchangeTest {
@@ -166,6 +175,44 @@ class ExchangeTest {
                 }
             }
             return map;
+        }
+    }
+
+    @Nested
+    class DefaultExchangeTest {
+
+        @Test
+        void publish_uses_empty_exchange_name() {
+            MockQueue mockQueue = mock(MockQueue.class);
+            MockNode mockNode = mock(MockNode.class);
+            when(mockNode.getQueue(any())).thenReturn(Optional.of(mockQueue));
+            MockDefaultExchange defaultExchange = new MockDefaultExchange(mockNode);
+
+            String previousExchangeName = "ex-previous";
+            String routingKey = "rk.test";
+            AMQP.BasicProperties props = new AMQP.BasicProperties();
+            byte[] body = "test".getBytes();
+
+            defaultExchange.publish(previousExchangeName, routingKey, props, body);
+
+            ArgumentCaptor<String> publishedExchangeName = ArgumentCaptor.forClass(String.class);
+            ArgumentCaptor<String> publishedRoutingKey = ArgumentCaptor.forClass(String.class);
+            ArgumentCaptor<AMQP.BasicProperties> publishedProps = ArgumentCaptor.forClass(AMQP.BasicProperties.class);
+            ArgumentCaptor<byte[]> publishedBody = ArgumentCaptor.forClass(byte[].class);
+            verify(
+                mockQueue,
+                times(1)
+            ).publish(
+                publishedExchangeName.capture(),
+                publishedRoutingKey.capture(),
+                publishedProps.capture(),
+                publishedBody.capture()
+            );
+
+            assertThat(publishedExchangeName.getValue()).isEmpty();
+            assertThat(publishedRoutingKey.getValue()).isSameAs(routingKey);
+            assertThat(publishedProps.getValue()).isSameAs(props);
+            assertThat(publishedBody.getValue()).isSameAs(body);
         }
     }
 }
