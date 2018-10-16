@@ -1,14 +1,7 @@
 package com.github.fridujo.rabbitmq.mock;
 
-import com.rabbitmq.client.AMQP;
-import com.rabbitmq.client.BuiltinExchangeType;
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.DefaultConsumer;
-import com.rabbitmq.client.Envelope;
-import com.rabbitmq.client.GetResponse;
-import com.rabbitmq.client.ShutdownSignalException;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -18,8 +11,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.BuiltinExchangeType;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.DefaultConsumer;
+import com.rabbitmq.client.Envelope;
+import com.rabbitmq.client.GetResponse;
+import com.rabbitmq.client.ShutdownSignalException;
+import org.junit.jupiter.api.Test;
 
 class ChannelTest {
 
@@ -339,7 +339,7 @@ class ChannelTest {
 
                 List<String> messages = new ArrayList<>();
                 AtomicBoolean cancelled = new AtomicBoolean();
-                String consumerTag = channel.basicConsume("",
+                channel.basicConsume("",
                     (ct, delivery) -> messages.add(new String(delivery.getBody())),
                     ct -> cancelled.set(true));
 

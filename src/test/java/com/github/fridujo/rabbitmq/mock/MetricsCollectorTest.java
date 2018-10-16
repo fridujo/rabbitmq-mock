@@ -153,6 +153,7 @@ public class MetricsCollectorTest {
 
                 @Override
                 public void handleCancelOk(String consumerTag) {
+                    // Consumer cancellation is not the purpose of this test
                 }
             });
 
