@@ -66,6 +66,10 @@ public class MockQueue implements Receiver {
     }
 
     private boolean deliverToConsumerIfPossible() {
+        // break the delivery loop in case of a shutdown
+        if(!running.get()) {
+            return false;
+        }
         boolean delivered = false;
         if (consumersByTag.size() > 0) {
             Message message = messages.poll();
