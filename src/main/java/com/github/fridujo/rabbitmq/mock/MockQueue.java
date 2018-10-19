@@ -67,7 +67,7 @@ public class MockQueue implements Receiver {
 
     private boolean deliverToConsumerIfPossible() {
         // break the delivery loop in case of a shutdown
-        if(!running.get()) {
+        if (!running.get()) {
             return false;
         }
         boolean delivered = false;
@@ -204,6 +204,7 @@ public class MockQueue implements Receiver {
     }
 
     public void notifyDeleted() {
+        running.set(false);
         for (ConsumerAndTag consumerAndTag : consumersByTag.values()) {
             try {
                 consumerAndTag.consumer.handleCancel(consumerAndTag.tag);
@@ -211,13 +212,9 @@ public class MockQueue implements Receiver {
                 LOGGER.warn("Consumer threw an exception when notified about cancellation", e);
             }
         }
-        close();
+
     }
 
-    /**
-     * This methods blocks until the Thread serving Consumers ends.<br>
-     * Considering that Consumers handle messages in no-time, this method should return in max {@value #SLEEPING_TIME_BETWEEN_SUBMISSIONS_TO_CONSUMERS} ms.
-     */
     public void close() {
         running.set(false);
         executorService.shutdown();
