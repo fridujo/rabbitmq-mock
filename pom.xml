@@ -17,7 +17,7 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
 
-        <rabbitmq.client.version>5.4.2</rabbitmq.client.version>
+        <rabbitmq.client.version>5.4.3</rabbitmq.client.version>
 
         <assertj.version>3.10.0</assertj.version>
         <mockito.version>2.19.0</mockito.version>
