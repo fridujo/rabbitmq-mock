@@ -1,12 +1,7 @@
 package com.github.fridujo.rabbitmq.mock;
 
-import com.rabbitmq.client.AMQP;
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.DefaultConsumer;
-import com.rabbitmq.client.Envelope;
-import com.rabbitmq.client.GetResponse;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -16,8 +11,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
+import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.DefaultConsumer;
+import com.rabbitmq.client.Envelope;
+import com.rabbitmq.client.GetResponse;
+import org.junit.jupiter.api.Test;
 
 class IntegrationTest {
 
@@ -99,7 +99,8 @@ class IntegrationTest {
         String routingKey = "test.key";
 
         AtomicInteger atomicInteger = new AtomicInteger();
-        final Semaphore semaphore = new Semaphore(0);
+        final Semaphore waitForAtLeastOneDelivery = new Semaphore(0);
+        final Semaphore waitForCancellation = new Semaphore(0);
 
         try (Connection conn = new MockConnectionFactory().newConnection()) {
             assertThat(conn).isInstanceOf(MockConnection.class);
@@ -118,29 +119,30 @@ class IntegrationTest {
                                                    Envelope envelope,
                                                    AMQP.BasicProperties properties,
                                                    byte[] body) throws IOException {
-                            semaphore.release();
+                            waitForAtLeastOneDelivery.release();
                             long deliveryTag = envelope.getDeliveryTag();
                             atomicInteger.incrementAndGet();
                             channel.basicNack(deliveryTag, false, true);
+                        }
+
+                        @Override
+                        public void handleCancel(String consumerTag) {
+                            waitForCancellation.release();
                         }
                     });
 
                 byte[] messageBodyBytes = "Hello, world!".getBytes();
                 channel.basicPublish(exchangeName, routingKey, null, messageBodyBytes);
-                semaphore.acquire();
-
+                waitForAtLeastOneDelivery.acquire();
             }
-
         }
 
         // WHEN after closing the connection and resetting the counter
         atomicInteger.set(0);
 
-        TimeUnit.MILLISECONDS.sleep(100L);
+        waitForCancellation.acquire();
         assertThat(atomicInteger.get())
-            .describedAs("even after a few milliseconds, the consumer should not have been invoked on the message")
+            .describedAs("After connection closed, and Consumer cancellation, no message should be delivered anymore")
             .isZero();
-
-
     }
 }

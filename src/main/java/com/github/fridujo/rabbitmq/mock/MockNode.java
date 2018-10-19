@@ -1,17 +1,18 @@
 package com.github.fridujo.rabbitmq.mock;
 
-import com.github.fridujo.rabbitmq.mock.exchange.MockDefaultExchange;
-import com.github.fridujo.rabbitmq.mock.exchange.MockExchange;
-import com.github.fridujo.rabbitmq.mock.exchange.MockExchangeFactory;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
+
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Consumer;
 import com.rabbitmq.client.GetResponse;
 import com.rabbitmq.client.impl.AMQImpl;
 
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Supplier;
+import com.github.fridujo.rabbitmq.mock.exchange.MockDefaultExchange;
+import com.github.fridujo.rabbitmq.mock.exchange.MockExchange;
+import com.github.fridujo.rabbitmq.mock.exchange.MockExchangeFactory;
 
 public class MockNode implements ReceiverRegistry, TransactionalOperations {
 
@@ -174,6 +175,7 @@ public class MockNode implements ReceiverRegistry, TransactionalOperations {
     }
 
     public void close() {
+        queues.values().forEach(MockQueue::notifyDeleted);
         queues.values().forEach(MockQueue::close);
     }
 }
