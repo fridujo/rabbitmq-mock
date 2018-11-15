@@ -9,11 +9,11 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Optional;
-import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -50,7 +50,7 @@ public class MockQueue implements Receiver {
         this.receiverRegistry = receiverRegistry;
         this.mockChannel = mockChannel;
 
-        messages = new PriorityQueue<>(new MessageComparator(arguments));
+        messages = new PriorityBlockingQueue<>(11, new MessageComparator(arguments));
         start();
     }
 

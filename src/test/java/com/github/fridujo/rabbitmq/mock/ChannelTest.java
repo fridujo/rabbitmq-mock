@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -19,6 +21,7 @@ import com.rabbitmq.client.DefaultConsumer;
 import com.rabbitmq.client.Envelope;
 import com.rabbitmq.client.GetResponse;
 import com.rabbitmq.client.ShutdownSignalException;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 
 class ChannelTest {
@@ -329,6 +332,35 @@ class ChannelTest {
             }
         }
     }
+
+    @RepeatedTest(31)
+    void basicConsume_concurrent_queue_access() throws IOException, TimeoutException, InterruptedException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                String queueName = channel.queueDeclare().getQueue();
+
+                BlockingQueue<String> messages = new LinkedBlockingQueue<>();
+                channel.basicConsume("", new DefaultConsumer(channel) {
+                    @Override
+                    public void handleDelivery(String consumerTag,
+                                               Envelope envelope,
+                                               AMQP.BasicProperties properties,
+                                               byte[] body) {
+                        messages.offer(new String(body));
+                    }
+                });
+
+                int totalMessages = 101;
+                for (int i = 1; i <= totalMessages; i++) {
+                    channel.basicPublish("", queueName, null, "test message".getBytes());
+                }
+                for (int i = 1; i <= totalMessages; i++) {
+                    assertThat(messages.poll(200L, TimeUnit.MILLISECONDS)).isNotNull();
+                }
+            }
+        }
+    }
+
 
     @Test
     void basicConsume_with_callbacks() throws IOException, TimeoutException, InterruptedException {
