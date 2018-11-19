@@ -8,7 +8,7 @@
 
 Mock for RabbitMQ Java [amqp-client](https://github.com/rabbitmq/rabbitmq-java-client).
 
-> Compatible with versions **4.0.0** to **5.4.3** of [**com.rabbitmq:amqp-client**](https://github.com/rabbitmq/rabbitmq-java-client)
+> Compatible with versions **4.0.0** to **5.5.0** of [**com.rabbitmq:amqp-client**](https://github.com/rabbitmq/rabbitmq-java-client)
 
 > Compatible with versions **3.6.3** to **4.0.0** with the [`com.github.fridujo.rabbitmq.mock.compatibility` package](src/main/java/com/github/fridujo/rabbitmq/mock/compatibility/MockConnectionFactoryFactory.java).
 
@@ -19,7 +19,6 @@ This project aims to emulate RabbitMQ behavior for test purposes, through:
 
 ## Example Use
 
-### Without Spring
 Replace the use of `com.rabbitmq.client.ConnectionFactory` by [`MockConnectionFactory`](src/main/java/com/github/fridujo/rabbitmq/mock/MockConnectionFactory.java)
 
 ```java
@@ -64,7 +63,7 @@ Add the following dependency to your **pom.xml**
 <dependency>
     <groupId>com.github.fridujo</groupId>
     <artifactId>rabbitmq-mock</artifactId>
-    <version>1.0.7</version>
+    <version>1.0.8</version>
     <scope>test</scope>
 </dependency>
 ```
@@ -80,7 +79,7 @@ repositories {
 
 dependencies {
 	// ...
-	testCompile('com.github.fridujo:rabbitmq-mock:1.0.7')
+	testCompile('com.github.fridujo:rabbitmq-mock:1.0.8')
 	// ...
 }
 ```
