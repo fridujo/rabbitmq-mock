@@ -176,6 +176,9 @@
                             <filterProperties>
                                 <spring-boot.version>1.4.0.RELEASE</spring-boot.version>
                             </filterProperties>
+                            <pomIncludes>
+                                <pomInclude>spring_boot/pom.xml</pomInclude>
+                            </pomIncludes>
                         </configuration>
                     </execution>
                     <execution>
@@ -188,6 +191,9 @@
                             <filterProperties>
                                 <spring-boot.version>1.5.0.RELEASE</spring-boot.version>
                             </filterProperties>
+                            <pomIncludes>
+                                <pomInclude>spring_boot/pom.xml</pomInclude>
+                            </pomIncludes>
                         </configuration>
                     </execution>
                     <execution>
@@ -200,6 +206,9 @@
                             <filterProperties>
                                 <spring-boot.version>2.0.0.RELEASE</spring-boot.version>
                             </filterProperties>
+                            <pomIncludes>
+                                <pomInclude>spring_boot/pom.xml</pomInclude>
+                            </pomIncludes>
                         </configuration>
                     </execution>
                     <execution>
@@ -212,6 +221,21 @@
                             <filterProperties>
                                 <spring-boot.version>2.1.0.RELEASE</spring-boot.version>
                             </filterProperties>
+                            <pomIncludes>
+                                <pomInclude>spring_boot/pom.xml</pomInclude>
+                            </pomIncludes>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>spring-cloud-bus-Finchley</id>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <phase>integration-test</phase>
+                        <configuration>
+                            <pomIncludes>
+                                <pomInclude>spring_cloud_bus/pom.xml</pomInclude>
+                            </pomIncludes>
                         </configuration>
                     </execution>
                 </executions>
@@ -235,11 +259,6 @@
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>${maven-surefire-plugin.version}</version>
                     <dependencies>
-                        <dependency>
-                            <groupId>org.junit.platform</groupId>
-                            <artifactId>junit-platform-surefire-provider</artifactId>
-                            <version>${junit.platform.version}</version>
-                        </dependency>
                         <dependency>
                             <groupId>org.junit.jupiter</groupId>
                             <artifactId>junit-jupiter-engine</artifactId>
