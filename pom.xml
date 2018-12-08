@@ -26,7 +26,6 @@
         <logback.version>1.2.3</logback.version>
 
         <junit.jupiter.version>5.3.1</junit.jupiter.version>
-        <junit.platform.version>1.3.1</junit.platform.version>
         <pitest-junit5.version>0.8</pitest-junit5.version>
 
         <maven-javadoc-plugin.version>3.0.1</maven-javadoc-plugin.version>
@@ -104,6 +103,12 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
+            <version>${junit.jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
             <version>${junit.jupiter.version}</version>
             <scope>test</scope>
         </dependency>
@@ -258,13 +263,6 @@
                 <plugin>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>${maven-surefire-plugin.version}</version>
-                    <dependencies>
-                        <dependency>
-                            <groupId>org.junit.jupiter</groupId>
-                            <artifactId>junit-jupiter-engine</artifactId>
-                            <version>${junit.jupiter.version}</version>
-                        </dependency>
-                    </dependencies>
                 </plugin>
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
