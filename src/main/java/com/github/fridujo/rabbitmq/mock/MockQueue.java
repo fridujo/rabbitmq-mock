@@ -5,6 +5,7 @@ import static com.github.fridujo.rabbitmq.mock.tool.Exceptions.runAndTransformEx
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -68,9 +69,11 @@ public class MockQueue implements Receiver {
     private boolean deliverToConsumerIfPossible() {
         // break the delivery loop in case of a shutdown
         if (!running.get()) {
+            LOGGER.debug(localized("shutting down"));
             return false;
         }
         boolean delivered = false;
+
         if (consumersByTag.size() > 0) {
             Message message = messages.poll();
             if (message != null) {
@@ -87,6 +90,7 @@ public class MockQueue implements Receiver {
                         message.exchangeName,
                         message.routingKey);
                     try {
+                        LOGGER.debug(localized("delivering message to consumer"));
                         nextConsumer.consumer.handleDelivery(nextConsumer.tag, envelope, message.props, message.body);
                         mockChannel.getMetricsCollector().consumedMessage(mockChannel, deliveryTag, nextConsumer.tag);
                         if (nextConsumer.autoAck) {
@@ -94,11 +98,13 @@ public class MockQueue implements Receiver {
                         }
                         delivered = true;
                     } catch (IOException e) {
-                        LOGGER.warn("Unable to deliver message to consumer [" + nextConsumer.tag + "]");
+                        LOGGER.warn(localized("Unable to deliver message to consumer [" + nextConsumer.tag + "]"));
                         basicReject(deliveryTag, true);
                     }
                 }
             }
+        } else {
+            LOGGER.trace(localized("polling nothing"));
         }
         return delivered;
     }
@@ -108,14 +114,20 @@ public class MockQueue implements Receiver {
         if (queueLengthLimitReached && arguments.overflow() == AmqArguments.Overflow.REJECT_PUBLISH) {
             return;
         }
-        messages.offer(new Message(
+        Message message = new Message(
             messageSequence.incrementAndGet(),
             exchangeName,
             routingKey,
             props,
             body,
             computeExpiryTime(props)
-        ));
+        );
+        if (message.expiryTime != -1) {
+            LOGGER.debug(localized("Message published expiring at " + new Date(message.expiryTime)));
+        } else {
+            LOGGER.debug(localized("Message published"));
+        }
+        messages.offer(message);
         if (queueLengthLimitReached) {
             deadLetter(messages.poll());
         }
@@ -127,6 +139,7 @@ public class MockQueue implements Receiver {
     }
 
     public void basicConsume(String consumerTag, Consumer consumer, boolean autoAck, Supplier<Long> deliveryTagSupplier) {
+        LOGGER.debug(localized("registering consumer"));
         consumersByTag.put(consumerTag, new ConsumerAndTag(consumerTag, consumer, autoAck, deliveryTagSupplier));
         consumer.handleConsumeOk(consumerTag);
     }
@@ -188,12 +201,19 @@ public class MockQueue implements Receiver {
     private void deadLetter(Message message) {
         arguments.getDeadLetterExchange()
             .flatMap(receiverRegistry::getReceiver)
-            .ifPresent(deadLetterExchange -> deadLetterExchange.publish(
-                message.exchangeName,
-                arguments.getDeadLetterRoutingKey().orElse(message.routingKey),
-                message.props,
-                message.body)
+            .ifPresent(deadLetterExchange -> {
+                    LOGGER.debug(localized("dead-lettered message to " + deadLetterExchange));
+                    deadLetterExchange.publish(
+                        message.exchangeName,
+                        arguments.getDeadLetterRoutingKey().orElse(message.routingKey),
+                        message.props,
+                        message.body);
+                }
             );
+    }
+
+    private String localized(String message) {
+        return "[Q " + name + "] " + message;
     }
 
     public void basicCancel(String consumerTag) {
@@ -296,10 +316,7 @@ public class MockQueue implements Receiver {
 
     @Override
     public String toString() {
-        return "MockQueue{" +
-            "name='" + name + '\'' +
-            ", arguments=" + arguments +
-            '}';
+        return "Queue " + name;
     }
 
     static class ConsumerAndTag {
