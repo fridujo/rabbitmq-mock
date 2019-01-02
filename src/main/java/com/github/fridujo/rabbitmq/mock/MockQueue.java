@@ -27,6 +27,8 @@ import com.rabbitmq.client.GetResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.fridujo.rabbitmq.mock.tool.NamedThreadFactory;
+
 public class MockQueue implements Receiver {
     private static final Logger LOGGER = LoggerFactory.getLogger(MockQueue.class);
     private static final long SLEEPING_TIME_BETWEEN_SUBMISSIONS_TO_CONSUMERS = 30L;
@@ -37,11 +39,11 @@ public class MockQueue implements Receiver {
     private final ReceiverRegistry receiverRegistry;
     private final MockChannel mockChannel;
     private final Queue<Message> messages;
+    private final ExecutorService executorService;
     private final Map<String, ConsumerAndTag> consumersByTag = new LinkedHashMap<>();
     private final AtomicInteger consumerRollingSequence = new AtomicInteger();
     private final AtomicInteger messageSequence = new AtomicInteger();
     private final Map<Long, Message> unackedMessagesByDeliveryTag = new LinkedHashMap<>();
-    private final ExecutorService executorService = Executors.newFixedThreadPool(1);
     private final AtomicBoolean running = new AtomicBoolean(true);
 
     public MockQueue(String name, AmqArguments arguments, ReceiverRegistry receiverRegistry, MockChannel mockChannel) {
@@ -52,6 +54,7 @@ public class MockQueue implements Receiver {
         this.mockChannel = mockChannel;
 
         messages = new PriorityBlockingQueue<>(11, new MessageComparator(arguments));
+        executorService = Executors.newFixedThreadPool(1, new NamedThreadFactory(i -> name + "_queue_consuming"));
         start();
     }
 
