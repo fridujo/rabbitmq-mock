@@ -1,11 +1,5 @@
 package com.github.fridujo.rabbitmq.mock.exchange;
 
-import com.github.fridujo.rabbitmq.mock.AmqArguments;
-import com.github.fridujo.rabbitmq.mock.Receiver;
-import com.github.fridujo.rabbitmq.mock.ReceiverPointer;
-import com.github.fridujo.rabbitmq.mock.ReceiverRegistry;
-import com.rabbitmq.client.AMQP;
-
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -14,7 +8,18 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.rabbitmq.client.AMQP;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.github.fridujo.rabbitmq.mock.AmqArguments;
+import com.github.fridujo.rabbitmq.mock.MockQueue;
+import com.github.fridujo.rabbitmq.mock.Receiver;
+import com.github.fridujo.rabbitmq.mock.ReceiverPointer;
+import com.github.fridujo.rabbitmq.mock.ReceiverRegistry;
+
 public abstract class BindableMockExchange implements MockExchange {
+    private static final Logger LOGGER = LoggerFactory.getLogger(MockQueue.class);
 
     private final Set<BindConfiguration> bindConfigurations = new LinkedHashSet<>();
     private final String name;
@@ -38,14 +43,19 @@ public abstract class BindableMockExchange implements MockExchange {
             .map(receiverRegistry::getReceiver)
             .filter(Optional::isPresent)
             .map(Optional::get)
-            .distinct()
             .collect(Collectors.toSet());
 
         if (matchingReceivers.isEmpty()) {
-            getAlternateExchange().ifPresent(e -> e.publish(name, routingKey, props, body));
+            getAlternateExchange().ifPresent(e -> {
+                LOGGER.debug(localized("message to alternate " + e));
+                e.publish(name, routingKey, props, body);
+            });
         } else {
             matchingReceivers
-                .forEach(e -> e.publish(name, routingKey, props, body));
+                .forEach(e -> {
+                    LOGGER.debug(localized("message to " + e));
+                    e.publish(name, routingKey, props, body);
+                });
         }
     }
 
@@ -54,6 +64,10 @@ public abstract class BindableMockExchange implements MockExchange {
     }
 
     protected abstract boolean match(String bindingKey, Map<String, Object> bindArguments, String routingKey, Map<String, Object> headers);
+
+    private String localized(String message) {
+        return "[E " + name + "] " + message;
+    }
 
     @Override
     public void bind(ReceiverPointer receiver, String routingKey, Map<String, Object> arguments) {
@@ -68,6 +82,11 @@ public abstract class BindableMockExchange implements MockExchange {
     @Override
     public ReceiverPointer pointer() {
         return pointer;
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " " + name;
     }
 
     static class BindConfiguration {
