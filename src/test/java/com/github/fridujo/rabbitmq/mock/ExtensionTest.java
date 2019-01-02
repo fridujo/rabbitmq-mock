@@ -1,5 +1,7 @@
 package com.github.fridujo.rabbitmq.mock;
 
+import static com.github.fridujo.rabbitmq.mock.configuration.QueueDeclarator.dynamicQueue;
+import static com.github.fridujo.rabbitmq.mock.configuration.QueueDeclarator.queue;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.junit.jupiter.api.DynamicTest.dynamicTest;
@@ -15,11 +17,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.IntStream;
 
-import org.junit.jupiter.api.DynamicTest;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestFactory;
-
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.Channel;
@@ -28,6 +25,10 @@ import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.DefaultConsumer;
 import com.rabbitmq.client.Envelope;
 import com.rabbitmq.client.GetResponse;
+import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestFactory;
 
 class ExtensionTest {
 
@@ -88,10 +89,10 @@ class ExtensionTest {
             try (Channel channel = conn.createChannel()) {
                 channel.queueDeclare("rejected", true, false, false, null);
                 channel.queueBindNoWait("rejected", "", "rejected", null);
-                Map<String,Object> queueArgs = new HashMap<>();
-                queueArgs.put("x-dead-letter-routing-key", "rejected");
-                queueArgs.put("x-dead-letter-exchange", "");
-                channel.queueDeclare("fruits", true, false, false, queueArgs);
+                queue("fruits")
+                    .withDeadLetterExchange("")
+                    .withDeadLetterRoutingKey("rejected")
+                    .declare(channel);
 
                 channel.basicPublish("", "fruits", null, "banana".getBytes());
                 GetResponse getResponse = channel.basicGet("fruits", false);
@@ -114,9 +115,7 @@ class ExtensionTest {
         void message_ttl_for_queue_keeps_messages_while_expiration_not_reached() throws IOException, TimeoutException {
             try (Connection conn = new MockConnectionFactory().newConnection()) {
                 try (Channel channel = conn.createChannel()) {
-                    Map<String, Object> args = new HashMap<>();
-                    args.put("x-message-ttl", 700);
-                    channel.queueDeclare("fruits", true, false, false, args);
+                    queue("fruits").withMessageTtl(700).declare(channel);
                     channel.basicPublish("", "fruits", null, "banana".getBytes());
                     GetResponse getResponse = channel.basicGet("fruits", true);
                     assertThat(getResponse).isNotNull();
@@ -131,11 +130,11 @@ class ExtensionTest {
                     channel.exchangeDeclare("rejected-ex", BuiltinExchangeType.FANOUT);
                     channel.queueDeclare("rejected", true, false, false, null);
                     channel.queueBindNoWait("rejected", "rejected-ex", "unused", null);
+                    queue("fruits")
+                        .withMessageTtl(200)
+                        .withDeadLetterExchange("rejected-ex")
+                        .declare(channel);
 
-                    Map<String, Object> args = new HashMap<>();
-                    args.put("x-message-ttl", 200);
-                    args.put("x-dead-letter-exchange", "rejected-ex");
-                    channel.queueDeclare("fruits", true, false, false, args);
                     channel.basicPublish("", "fruits", null, "banana".getBytes());
                     TimeUnit.MILLISECONDS.sleep(400L);
                     GetResponse getResponse = channel.basicGet("fruits", true);
@@ -151,10 +150,8 @@ class ExtensionTest {
         void message_ttl_for_queue_reject_messages_after_expiration_is_reached_using_consumer() throws IOException, TimeoutException, InterruptedException {
             try (Connection conn = new MockConnectionFactory().newConnection()) {
                 try (Channel channel = conn.createChannel()) {
+                    queue("fruits").withMessageTtl(100).declare(channel);
 
-                    Map<String, Object> args = new HashMap<>();
-                    args.put("x-message-ttl", 100);
-                    channel.queueDeclare("fruits", true, false, false, args);
                     channel.basicPublish("", "fruits", null, "banana".getBytes());
                     TimeUnit.MILLISECONDS.sleep(300L);
 
@@ -382,9 +379,7 @@ class ExtensionTest {
         void oldest_message_is_dropped_when_length_limit_is_reached() {
             try (MockConnection conn = new MockConnectionFactory().newConnection()) {
                 try (MockChannel channel = conn.createChannel()) {
-                    Map<String, Object> arguments = new HashMap<>();
-                    arguments.put("x-max-length", 2);
-                    String queueName = channel.queueDeclare("", true, true, false, arguments).getQueue();
+                    String queueName = dynamicQueue().withMaxLength(2).declare(channel).getQueue();
 
                     IntStream.range(0, 6).forEach(i ->
                         channel.basicPublish("", queueName, null, Integer.valueOf(i).toString().getBytes())
@@ -404,9 +399,7 @@ class ExtensionTest {
         void oldest_message_is_dropped_when_length_bytes_limit_is_reached() {
             try (MockConnection conn = new MockConnectionFactory().newConnection()) {
                 try (MockChannel channel = conn.createChannel()) {
-                    Map<String, Object> arguments = new HashMap<>();
-                    arguments.put("x-max-length-bytes", 10);
-                    String queueName = channel.queueDeclare("", true, true, false, arguments).getQueue();
+                    String queueName = dynamicQueue().withMaxLengthBytes(10).declare(channel).getQueue();
 
                     IntStream.range(0, 6).forEach(i ->
                         channel.basicPublish("", queueName, null, ("hello " + i).getBytes())
@@ -426,10 +419,11 @@ class ExtensionTest {
         void new_message_is_dropped_when_length_limit_is_reached_and_overflow_is_set_to_reject_publish() {
             try (MockConnection conn = new MockConnectionFactory().newConnection()) {
                 try (MockChannel channel = conn.createChannel()) {
-                    Map<String, Object> arguments = new HashMap<>();
-                    arguments.put("x-max-length", 2);
-                    arguments.put("x-overflow", "reject-publish");
-                    String queueName = channel.queueDeclare("", true, true, false, arguments).getQueue();
+                    String queueName = dynamicQueue()
+                        .withMaxLength(2)
+                        .withOverflow(AmqArguments.Overflow.REJECT_PUBLISH)
+                        .declare(channel)
+                        .getQueue();
 
                     IntStream.range(0, 6).forEach(i ->
                         channel.basicPublish("", queueName, null, Integer.valueOf(i).toString().getBytes())
@@ -473,9 +467,7 @@ class ExtensionTest {
         void nominal_use() {
             try (MockConnection conn = new MockConnectionFactory().newConnection()) {
                 try (MockChannel channel = conn.createChannel()) {
-                    Map<String, Object> arguments = new HashMap<>();
-                    arguments.put("x-max-priority", 10);
-                    String queueName = channel.queueDeclare("", true, true, false, arguments).getQueue();
+                    String queueName = dynamicQueue().withMaxPriority(10).declare(channel).getQueue();
 
                     channel.basicPublish("", queueName, new AMQP.BasicProperties.Builder().priority(2).build(), "first".getBytes());
                     channel.basicPublish("", queueName, new AMQP.BasicProperties.Builder().priority(6).build(), "second".getBytes());
@@ -493,9 +485,7 @@ class ExtensionTest {
         void no_priority_is_considered_zero() {
             try (MockConnection conn = new MockConnectionFactory().newConnection()) {
                 try (MockChannel channel = conn.createChannel()) {
-                    Map<String, Object> arguments = new HashMap<>();
-                    arguments.put("x-max-priority", 10);
-                    String queueName = channel.queueDeclare("", true, true, false, arguments).getQueue();
+                    String queueName = dynamicQueue().withMaxPriority(10).declare(channel).getQueue();
 
                     channel.basicPublish("", queueName, null, "first".getBytes());
                     channel.basicPublish("", queueName, new AMQP.BasicProperties.Builder().priority(2).build(), "second".getBytes());
@@ -519,9 +509,7 @@ class ExtensionTest {
         private void withMaxPriority(int priority) {
             try (MockConnection conn = new MockConnectionFactory().newConnection()) {
                 try (MockChannel channel = conn.createChannel()) {
-                    Map<String, Object> arguments = new HashMap<>();
-                    arguments.put("x-max-priority", priority);
-                    String queueName = channel.queueDeclare("", true, true, false, arguments).getQueue();
+                    String queueName = dynamicQueue().withMaxPriority(priority).declare(channel).getQueue();
 
                     channel.basicPublish("", queueName, new AMQP.BasicProperties.Builder().priority(16).build(), "first".getBytes());
                     channel.basicPublish("", queueName, new AMQP.BasicProperties.Builder().priority(18).build(), "second".getBytes());

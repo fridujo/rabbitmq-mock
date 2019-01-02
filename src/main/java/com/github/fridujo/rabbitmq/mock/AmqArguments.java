@@ -5,15 +5,14 @@ import java.util.Map;
 import java.util.Optional;
 
 public class AmqArguments {
+    public static final String DEAD_LETTER_EXCHANGE_KEY = "x-dead-letter-exchange";
+    public static final String DEAD_LETTER_ROUTING_KEY_KEY = "x-dead-letter-routing-key";
+    public static final String MESSAGE_TTL_KEY = "x-message-ttl";
+    public static final String QUEUE_MAX_LENGTH_KEY = "x-max-length";
+    public static final String QUEUE_MAX_LENGTH_BYTES_KEY = "x-max-length-bytes";
+    public static final String OVERFLOW_KEY = "x-overflow";
+    public static final String MAX_PRIORITY_KEY = "x-max-priority";
     private final String ALTERNATE_EXCHANGE_KEY = "alternate-exchange";
-    private final String DEAD_LETTER_EXCHANGE_KEY = "x-dead-letter-exchange";
-    private final String DEAD_LETTER_ROUTING_KEY_KEY = "x-dead-letter-routing-key";
-    private final String MESSAGE_TTL_KEY = "x-message-ttl";
-    private final String QUEUE_MAX_LENGTH_KEY = "x-max-length";
-    private final String QUEUE_MAX_LENGTH_BYTES_KEY = "x-max-length-bytes";
-    private final String OVERFLOW_KEY = "x-overflow";
-    private final String MAX_PRIORITY_KEY = "x-max-priority";
-
     private final Map<String, Object> arguments;
 
     public AmqArguments(Map<String, Object> arguments) {
@@ -88,5 +87,9 @@ public class AmqArguments {
             return Arrays.stream(values()).filter(v -> value.equals(v.stringValue)).findFirst();
         }
 
+        @Override
+        public String toString() {
+            return stringValue;
+        }
     }
 }
