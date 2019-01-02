@@ -4,8 +4,8 @@ import static com.github.fridujo.rabbitmq.mock.tool.Exceptions.runAndEatExceptio
 import static com.github.fridujo.rabbitmq.mock.tool.Exceptions.runAndTransformExceptions;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -74,6 +74,9 @@ public class MockQueue implements Receiver {
         }
         boolean delivered = false;
 
+
+        delivered = deadLetterFirstMessageIfExpired();
+
         if (consumersByTag.size() > 0) {
             Message message = messages.poll();
             if (message != null) {
@@ -102,11 +105,23 @@ public class MockQueue implements Receiver {
                         basicReject(deliveryTag, true);
                     }
                 }
+            } else {
+                LOGGER.trace(localized("no consumer to deliver message to"));
             }
-        } else {
-            LOGGER.trace(localized("polling nothing"));
         }
         return delivered;
+    }
+
+    private boolean deadLetterFirstMessageIfExpired() {
+        Message potentiallyExpired = messages.peek();
+        if (potentiallyExpired != null && potentiallyExpired.isExpired()) {
+            Message expiredMessage = messages.poll();
+            if (potentiallyExpired == expiredMessage) {
+                deadLetter(expiredMessage);
+                return true;
+            }
+        }
+        return false;
     }
 
     public void publish(String exchangeName, String routingKey, AMQP.BasicProperties props, byte[] body) {
@@ -123,11 +138,11 @@ public class MockQueue implements Receiver {
             computeExpiryTime(props)
         );
         if (message.expiryTime != -1) {
-            LOGGER.debug(localized("Message published expiring at " + new Date(message.expiryTime)));
+            LOGGER.debug(localized("Message published expiring at " + Instant.ofEpochMilli(message.expiryTime)) + ": " + message);
         } else {
-            LOGGER.debug(localized("Message published"));
+            LOGGER.debug(localized("Message published" + ": " + message));
         }
-        messages.offer(message);
+        boolean messagePersisted = messages.offer(message);
         if (queueLengthLimitReached) {
             deadLetter(messages.poll());
         }
@@ -160,6 +175,7 @@ public class MockQueue implements Receiver {
                     false,
                     message.exchangeName,
                     message.routingKey);
+                LOGGER.debug(localized("basic_get a message"));
                 return new GetResponse(
                     envelope,
                     message.props,
@@ -167,6 +183,7 @@ public class MockQueue implements Receiver {
                     messages.size());
             }
         } else {
+            LOGGER.debug(localized("basic_get no message available"));
             return null;
         }
     }
@@ -202,7 +219,7 @@ public class MockQueue implements Receiver {
         arguments.getDeadLetterExchange()
             .flatMap(receiverRegistry::getReceiver)
             .ifPresent(deadLetterExchange -> {
-                    LOGGER.debug(localized("dead-lettered message to " + deadLetterExchange));
+                    LOGGER.debug(localized("dead-lettered to " + deadLetterExchange + ": " + message));
                     deadLetterExchange.publish(
                         message.exchangeName,
                         arguments.getDeadLetterRoutingKey().orElse(message.routingKey),
@@ -292,18 +309,21 @@ public class MockQueue implements Receiver {
     }
 
     private long computeExpiryTime(AMQP.BasicProperties props) {
-        Optional<Long> messageTtlOfQueue = arguments.getMessageTtlOfQueue();
-        return getMessageTtl(props)
-            .orElseGet(() ->
-                messageTtlOfQueue
-                    .map(ttl -> System.currentTimeMillis() + ttl)
-                    .orElse(-1L)
-            );
+        long messageExpiryTimeOfQueue = arguments
+            .getMessageTtlOfQueue()
+            .map(this::computeExpiry)
+            .orElse(-1L);
+        return getMessageExpiryTime(props).orElse(messageExpiryTimeOfQueue);
     }
 
-    private Optional<Long> getMessageTtl(AMQP.BasicProperties props) {
+    private Optional<Long> getMessageExpiryTime(AMQP.BasicProperties props) {
         return Optional.ofNullable(props.getExpiration())
-            .flatMap(this::toLong);
+            .flatMap(this::toLong)
+            .map(this::computeExpiry);
+    }
+
+    private Long computeExpiry(long ttl) {
+        return System.currentTimeMillis() + ttl;
     }
 
     private Optional<Long> toLong(String s) {
