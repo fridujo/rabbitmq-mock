@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
@@ -38,6 +39,23 @@ class ExchangeTest {
             .isThrownBy(() -> MockExchangeFactory.build("test", "unknown type", empty(), mock(ReceiverRegistry.class)))
             .withMessage("No exchange type unknown type");
     }
+
+    @Test
+    void mockExchangeFactory_register_new_mock_exchange() {
+        MockExchangeFactory.registerMockExchange("x-delayed-message", (exchangeName, arguments, receiverRegistry) -> new BindableMockExchange(exchangeName, arguments, receiverRegistry) {
+            @Override
+            protected boolean match(String bindingKey, Map<String, Object> bindArguments, String routingKey, Map<String, Object> headers) {
+                try {
+                    TimeUnit.SECONDS.sleep(1);
+                } catch (InterruptedException e) {
+                }
+                return bindingKey.equals(routingKey);
+            }
+        });
+        BindableMockExchange xDelayedMockExchange = MockExchangeFactory.build("test", "x-delayed-message", empty(), mock(ReceiverRegistry.class));
+        assertThat(xDelayedMockExchange).isNotNull();
+    }
+
 
     @Nested
     class DirectTest {
