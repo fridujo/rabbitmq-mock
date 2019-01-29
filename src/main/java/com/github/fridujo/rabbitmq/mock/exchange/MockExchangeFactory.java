@@ -23,8 +23,8 @@ public abstract class MockExchangeFactory {
         mockExchanges.put("headers", (exchangeName, arguments, receiverRegistry) -> new MockHeadersExchange(exchangeName, arguments, receiverRegistry));
     }
 
-    public static void registerMockExchange(String type, MockExchangeCreator factoryCreator){
-        mockExchanges.put( type, factoryCreator);
+    public static void registerMockExchange(String type, MockExchangeCreator factoryCreator) {
+        mockExchanges.computeIfAbsent(type, s -> mockExchanges.put(s, factoryCreator));
     }
 
     public static BindableMockExchange build(String exchangeName, String type, AmqArguments arguments, ReceiverRegistry receiverRegistry) {
