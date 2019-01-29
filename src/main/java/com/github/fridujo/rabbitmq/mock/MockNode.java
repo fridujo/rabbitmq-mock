@@ -18,6 +18,7 @@ import com.github.fridujo.rabbitmq.mock.exchange.MockExchangeFactory;
 public class MockNode implements ReceiverRegistry, TransactionalOperations {
 
     private final Configuration configuration = new Configuration();
+    private final MockExchangeFactory mockExchangeFactory = new MockExchangeFactory(configuration);
     private final MockDefaultExchange defaultExchange = new MockDefaultExchange(this);
     private final Map<String, MockExchange> exchanges = new ConcurrentHashMap<>();
     private final Map<String, MockQueue> queues = new ConcurrentHashMap<>();
@@ -54,7 +55,7 @@ public class MockNode implements ReceiverRegistry, TransactionalOperations {
     }
 
     public AMQP.Exchange.DeclareOk exchangeDeclare(String exchangeName, String type, boolean durable, boolean autoDelete, boolean internal, Map<String, Object> arguments) {
-        exchanges.put(exchangeName, MockExchangeFactory.build(exchangeName, type, new AmqArguments(arguments), this));
+        exchanges.put(exchangeName, mockExchangeFactory.build(exchangeName, type, new AmqArguments(arguments), this));
         return new AMQImpl.Exchange.DeclareOk();
     }
 

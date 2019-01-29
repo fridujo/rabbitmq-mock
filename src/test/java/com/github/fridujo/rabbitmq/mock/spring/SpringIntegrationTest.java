@@ -1,6 +1,14 @@
 package com.github.fridujo.rabbitmq.mock.spring;
 
-import com.github.fridujo.rabbitmq.mock.MockConnectionFactory;
+import static java.time.Duration.ofMillis;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Message;
@@ -18,14 +26,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-
-import static java.time.Duration.ofMillis;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
+import com.github.fridujo.rabbitmq.mock.MockConnectionFactory;
+import com.github.fridujo.rabbitmq.mock.exchange.FixDelayExchangeCreator;
 
 class SpringIntegrationTest {
 
@@ -96,7 +98,10 @@ class SpringIntegrationTest {
 
         @Bean
         ConnectionFactory connectionFactory() {
-            return new CachingConnectionFactory(new MockConnectionFactory());
+            return new CachingConnectionFactory(
+                new MockConnectionFactory()
+                    .withAdditionalExchange(new FixDelayExchangeCreator())
+            );
         }
 
         @Bean
