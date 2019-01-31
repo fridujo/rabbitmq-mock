@@ -6,9 +6,7 @@ import com.rabbitmq.client.ConnectionFactory;
 
 import java.util.concurrent.ExecutorService;
 
-public class MockConnectionFactory extends ConnectionFactory {
-
-    private final MockNode mockNode = new MockNode();
+public class MockConnectionFactory extends ConfigurableConnectionFactory<MockConnectionFactory> {
 
     public MockConnectionFactory() {
         setAutomaticRecoveryEnabled(false);
