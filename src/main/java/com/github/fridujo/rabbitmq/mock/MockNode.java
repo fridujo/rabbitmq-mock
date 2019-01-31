@@ -10,12 +10,14 @@ import com.rabbitmq.client.Consumer;
 import com.rabbitmq.client.GetResponse;
 import com.rabbitmq.client.impl.AMQImpl;
 
+import com.github.fridujo.rabbitmq.mock.configuration.Configuration;
 import com.github.fridujo.rabbitmq.mock.exchange.MockDefaultExchange;
 import com.github.fridujo.rabbitmq.mock.exchange.MockExchange;
 import com.github.fridujo.rabbitmq.mock.exchange.MockExchangeFactory;
 
 public class MockNode implements ReceiverRegistry, TransactionalOperations {
 
+    private final Configuration configuration = new Configuration();
     private final MockDefaultExchange defaultExchange = new MockDefaultExchange(this);
     private final Map<String, MockExchange> exchanges = new ConcurrentHashMap<>();
     private final Map<String, MockQueue> queues = new ConcurrentHashMap<>();
@@ -177,5 +179,9 @@ public class MockNode implements ReceiverRegistry, TransactionalOperations {
     public void close() {
         queues.values().forEach(MockQueue::notifyDeleted);
         queues.values().forEach(MockQueue::close);
+    }
+
+    public Configuration getConfiguration() {
+        return configuration;
     }
 }

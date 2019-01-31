@@ -1,5 +1,6 @@
 package com.github.fridujo.rabbitmq.mock.compatibility;
 
+import com.github.fridujo.rabbitmq.mock.ConfigurableConnectionFactory;
 import com.github.fridujo.rabbitmq.mock.MockConnection;
 import com.github.fridujo.rabbitmq.mock.MockNode;
 import com.github.fridujo.rabbitmq.mock.metrics.MetricsCollectorWrapper;
@@ -10,10 +11,7 @@ import com.rabbitmq.client.ConnectionFactory;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
-public class MockConnectionFactoryWithoutAddressResolver extends ConnectionFactory {
-
-    private final MockNode mockNode = new MockNode();
-
+public class MockConnectionFactoryWithoutAddressResolver extends ConfigurableConnectionFactory<MockConnectionFactoryWithoutAddressResolver> {
 
     public MockConnectionFactoryWithoutAddressResolver() {
         setAutomaticRecoveryEnabled(false);
