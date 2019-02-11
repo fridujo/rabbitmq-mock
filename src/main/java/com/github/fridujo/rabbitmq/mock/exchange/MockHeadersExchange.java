@@ -24,15 +24,15 @@ public class MockHeadersExchange extends BindableMockExchange {
     }
 
     @Override
-    protected boolean match(String bindingKey, Map<String, Object> bindArguments, String routingKey, Map<String, Object> headers) {
-        String xMatch = Optional.ofNullable(bindArguments.get(X_MATCH_KEY))
+    protected boolean match(BindConfiguration bindConfiguration, String routingKey, Map<String, Object> headers) {
+        String xMatch = Optional.ofNullable(bindConfiguration.bindArguments.get(X_MATCH_KEY))
             .filter(xMatchObject -> xMatchObject instanceof String)
             .map(String.class::cast)
             .filter(X_MATCH_VALID_VALUES::contains)
             .orElse(MATCH_ALL);
 
         Predicate<Map.Entry<String, Object>> argumentPredicate = e -> Objects.equals(e.getValue(), headers.get(e.getKey()));
-        Stream<Map.Entry<String, Object>> argumentsToMatch = bindArguments.entrySet().stream()
+        Stream<Map.Entry<String, Object>> argumentsToMatch = bindConfiguration.bindArguments.entrySet().stream()
             .filter(e -> !X_MATCH_KEY.equals(e.getKey()));
 
         final boolean match;
