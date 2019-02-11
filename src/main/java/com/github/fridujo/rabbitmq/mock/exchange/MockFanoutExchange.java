@@ -1,9 +1,9 @@
 package com.github.fridujo.rabbitmq.mock.exchange;
 
+import java.util.Map;
+
 import com.github.fridujo.rabbitmq.mock.AmqArguments;
 import com.github.fridujo.rabbitmq.mock.ReceiverRegistry;
-
-import java.util.Map;
 
 public class MockFanoutExchange extends BindableMockExchange {
 
@@ -14,7 +14,7 @@ public class MockFanoutExchange extends BindableMockExchange {
     }
 
     @Override
-    protected boolean match(String bindingKey, Map<String, Object> bindArguments, String routingKey, Map<String, Object> headers) {
+    protected boolean match(BindConfiguration bindConfiguration, String routingKey, Map<String, Object> headers) {
         return true;
     }
 }

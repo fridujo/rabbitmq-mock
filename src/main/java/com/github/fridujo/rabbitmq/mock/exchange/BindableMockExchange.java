@@ -8,7 +8,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.rabbitmq.client.AMQP;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,11 +16,12 @@ import com.github.fridujo.rabbitmq.mock.MockQueue;
 import com.github.fridujo.rabbitmq.mock.Receiver;
 import com.github.fridujo.rabbitmq.mock.ReceiverPointer;
 import com.github.fridujo.rabbitmq.mock.ReceiverRegistry;
+import com.rabbitmq.client.AMQP;
 
 public abstract class BindableMockExchange implements MockExchange {
     private static final Logger LOGGER = LoggerFactory.getLogger(MockQueue.class);
 
-    private final Set<BindConfiguration> bindConfigurations = new LinkedHashSet<>();
+    protected final Set<BindConfiguration> bindConfigurations = new LinkedHashSet<>();
     private final String name;
     private final String type;
     private final AmqArguments arguments;
@@ -45,7 +45,7 @@ public abstract class BindableMockExchange implements MockExchange {
     public void publish(String previousExchangeName, String routingKey, AMQP.BasicProperties props, byte[] body) {
         Set<Receiver> matchingReceivers = bindConfigurations
             .stream()
-            .filter(bindConfiguration -> match(bindConfiguration.bindingKey, bindConfiguration.bindArguments, routingKey, props.getHeaders()))
+            .filter(bindConfiguration -> match(bindConfiguration, routingKey, props.getHeaders()))
             .map(BindConfiguration::receiverPointer)
             .map(receiverRegistry::getReceiver)
             .filter(Optional::isPresent)
@@ -70,7 +70,7 @@ public abstract class BindableMockExchange implements MockExchange {
         return arguments.getAlternateExchange().flatMap(receiverRegistry::getReceiver);
     }
 
-    protected abstract boolean match(String bindingKey, Map<String, Object> bindArguments, String routingKey, Map<String, Object> headers);
+    protected abstract boolean match(BindConfiguration bindConfiguration, String routingKey, Map<String, Object> headers);
 
     private String localized(String message) {
         return "[E " + name + "] " + message;
@@ -96,12 +96,12 @@ public abstract class BindableMockExchange implements MockExchange {
         return getClass().getSimpleName() + " " + name;
     }
 
-    static class BindConfiguration {
-        final String bindingKey;
-        final ReceiverPointer receiverPointer;
-        final Map<String, Object> bindArguments;
+    public static class BindConfiguration {
+        public final String bindingKey;
+        public final ReceiverPointer receiverPointer;
+        public final Map<String, Object> bindArguments;
 
-        private BindConfiguration(String bindingKey, ReceiverPointer receiverPointer, Map<String, Object> bindArguments) {
+        public BindConfiguration(String bindingKey, ReceiverPointer receiverPointer, Map<String, Object> bindArguments) {
             this.bindingKey = bindingKey;
             this.receiverPointer = receiverPointer;
             this.bindArguments = bindArguments;

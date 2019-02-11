@@ -26,7 +26,7 @@ public class FixDelayExchange extends BindableMockExchange {
     }
 
     @Override
-    protected boolean match(String bindingKey, Map<String, Object> bindArguments, String routingKey, Map<String, Object> headers) {
-        return bindingKey.equals(routingKey);
+    protected boolean match(BindConfiguration bindConfiguration, String routingKey, Map<String, Object> headers) {
+        return bindConfiguration.bindingKey.equals(routingKey);
     }
 }
