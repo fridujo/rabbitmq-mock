@@ -1,5 +1,6 @@
 package com.github.fridujo.rabbitmq.mock.exchange;
 
+import static com.github.fridujo.rabbitmq.mock.exchange.MockExchangeCreator.creatorWithExchangeType;
 import static java.util.Collections.emptyMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -13,8 +14,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 
-import com.rabbitmq.client.AMQP;
-import com.rabbitmq.client.BuiltinExchangeType;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -26,6 +25,8 @@ import com.github.fridujo.rabbitmq.mock.MockNode;
 import com.github.fridujo.rabbitmq.mock.MockQueue;
 import com.github.fridujo.rabbitmq.mock.ReceiverRegistry;
 import com.github.fridujo.rabbitmq.mock.configuration.Configuration;
+import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.BuiltinExchangeType;
 
 class ExchangeTest {
 
@@ -45,9 +46,9 @@ class ExchangeTest {
 
     @Test
     void mockExchangeFactory_register_new_mock_exchange() {
-        configuration.registerAdditionalExchangeCreator(new FixDelayExchangeCreator());
+        configuration.registerAdditionalExchangeCreator(creatorWithExchangeType(FixDelayExchange.TYPE, FixDelayExchange::new));
         BindableMockExchange xDelayedMockExchange = mockExchangeFactory.build("test", "x-fix-delayed-message", empty(), mock(ReceiverRegistry.class));
-        assertThat(xDelayedMockExchange).isExactlyInstanceOf(FixDelayExchangeCreator.FixDelayExchange.class);
+        assertThat(xDelayedMockExchange).isExactlyInstanceOf(FixDelayExchange.class);
     }
 
     @Nested

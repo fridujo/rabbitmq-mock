@@ -4,11 +4,12 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.github.fridujo.rabbitmq.mock.exchange.MockExchangeCreator;
+import com.github.fridujo.rabbitmq.mock.exchange.TypedMockExchangeCreator;
 
 public class Configuration {
     private Map<String, MockExchangeCreator> additionalExchangeCreatorsByType = new LinkedHashMap<>();
 
-    public void registerAdditionalExchangeCreator(MockExchangeCreator mockExchangeCreator) {
+    public void registerAdditionalExchangeCreator(TypedMockExchangeCreator mockExchangeCreator) {
         additionalExchangeCreatorsByType.put(mockExchangeCreator.getType(), mockExchangeCreator);
     }
 
