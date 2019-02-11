@@ -1,5 +1,6 @@
 package com.github.fridujo.rabbitmq.mock.spring;
 
+import static com.github.fridujo.rabbitmq.mock.exchange.MockExchangeCreator.creatorWithExchangeType;
 import static java.time.Duration.ofMillis;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
@@ -27,7 +28,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
 import com.github.fridujo.rabbitmq.mock.MockConnectionFactory;
-import com.github.fridujo.rabbitmq.mock.exchange.FixDelayExchangeCreator;
+import com.github.fridujo.rabbitmq.mock.exchange.FixDelayExchange;
 
 class SpringIntegrationTest {
 
@@ -100,7 +101,7 @@ class SpringIntegrationTest {
         ConnectionFactory connectionFactory() {
             return new CachingConnectionFactory(
                 new MockConnectionFactory()
-                    .withAdditionalExchange(new FixDelayExchangeCreator())
+                    .withAdditionalExchange(creatorWithExchangeType("x-fix-delayed-message", FixDelayExchange::new))
             );
         }
 
