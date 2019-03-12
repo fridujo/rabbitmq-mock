@@ -9,9 +9,12 @@ import com.github.fridujo.rabbitmq.mock.AmqArguments;
 import com.github.fridujo.rabbitmq.mock.ReceiverRegistry;
 
 public class FixDelayExchangeCreator implements MockExchangeCreator {
+
+    private static final String TYPE = "x-fix-delayed-message";
+
     @Override
     public String getType() {
-        return "x-fix-delayed-message";
+        return TYPE;
     }
 
     @Override
@@ -22,7 +25,7 @@ public class FixDelayExchangeCreator implements MockExchangeCreator {
     static class FixDelayExchange extends BindableMockExchange {
 
         private FixDelayExchange(String name, AmqArguments arguments, ReceiverRegistry receiverRegistry) {
-            super(name, arguments, receiverRegistry);
+            super(name, TYPE, arguments, receiverRegistry);
         }
 
         @Override

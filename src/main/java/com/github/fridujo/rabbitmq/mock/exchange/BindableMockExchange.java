@@ -23,15 +23,22 @@ public abstract class BindableMockExchange implements MockExchange {
 
     private final Set<BindConfiguration> bindConfigurations = new LinkedHashSet<>();
     private final String name;
+    private final String type;
     private final AmqArguments arguments;
     private final ReceiverPointer pointer;
     private final ReceiverRegistry receiverRegistry;
 
-    protected BindableMockExchange(String name, AmqArguments arguments, ReceiverRegistry receiverRegistry) {
+    protected BindableMockExchange(String name, String type, AmqArguments arguments, ReceiverRegistry receiverRegistry) {
         this.name = name;
+        this.type = type;
         this.arguments = arguments;
         this.pointer = new ReceiverPointer(ReceiverPointer.Type.EXCHANGE, name);
         this.receiverRegistry = receiverRegistry;
+    }
+
+    @Override
+    public String getType() {
+        return type;
     }
 
     @Override

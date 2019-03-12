@@ -1,5 +1,6 @@
 package com.github.fridujo.rabbitmq.mock;
 
+import com.github.fridujo.rabbitmq.mock.exchange.MockExchange;
 import com.github.fridujo.rabbitmq.mock.metrics.MetricsCollectorWrapper;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
@@ -180,52 +181,56 @@ public class MockChannel implements Channel {
     }
 
     @Override
-    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, String type) {
+    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, String type) throws IOException {
         return exchangeDeclare(exchange, type, false, true, false, Collections.emptyMap());
     }
 
     @Override
-    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, BuiltinExchangeType type) {
+    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, BuiltinExchangeType type) throws IOException {
         return exchangeDeclare(exchange, type, false);
     }
 
     @Override
-    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, String type, boolean durable) {
+    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, String type, boolean durable) throws IOException {
         return exchangeDeclare(exchange, type, durable, true, Collections.emptyMap());
     }
 
     @Override
-    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, BuiltinExchangeType type, boolean durable) {
+    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, BuiltinExchangeType type, boolean durable) throws IOException {
         return exchangeDeclare(exchange, type, durable, true, Collections.emptyMap());
     }
 
     @Override
-    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, String type, boolean durable, boolean autoDelete, Map<String, Object> arguments) {
+    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, String type, boolean durable, boolean autoDelete, Map<String, Object> arguments) throws IOException {
         return exchangeDeclare(exchange, type, durable, autoDelete, false, arguments);
     }
 
     @Override
-    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, BuiltinExchangeType type, boolean durable, boolean autoDelete, Map<String, Object> arguments) {
+    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, BuiltinExchangeType type, boolean durable, boolean autoDelete, Map<String, Object> arguments) throws IOException {
         return exchangeDeclare(exchange, type, durable, autoDelete, false, arguments);
     }
 
     @Override
-    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, String type, boolean durable, boolean autoDelete, boolean internal, Map<String, Object> arguments) {
-        return node.exchangeDeclare(exchange, type, durable, autoDelete, internal, nullToEmpty(arguments));
+    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchangeName, String type, boolean durable, boolean autoDelete, boolean internal, Map<String, Object> arguments) throws IOException {
+        Optional<MockExchange> exchange = node.getExchange(exchangeName);
+        if(exchange.isPresent() && !exchange.get().getType().equals(type)) {
+            throw AmqpExceptions.inequivalentExchangeRedeclare(this, "/", exchangeName, exchange.get().getType(), type);
+        }
+        return node.exchangeDeclare(exchangeName, type, durable, autoDelete, internal, nullToEmpty(arguments));
     }
 
     @Override
-    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, BuiltinExchangeType type, boolean durable, boolean autoDelete, boolean internal, Map<String, Object> arguments) {
+    public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, BuiltinExchangeType type, boolean durable, boolean autoDelete, boolean internal, Map<String, Object> arguments) throws IOException {
         return exchangeDeclare(exchange, type.getType(), durable, autoDelete, internal, arguments);
     }
 
     @Override
-    public void exchangeDeclareNoWait(String exchange, String type, boolean durable, boolean autoDelete, boolean internal, Map<String, Object> arguments) {
+    public void exchangeDeclareNoWait(String exchange, String type, boolean durable, boolean autoDelete, boolean internal, Map<String, Object> arguments) throws IOException {
         exchangeDeclare(exchange, type, durable, autoDelete, internal, arguments);
     }
 
     @Override
-    public void exchangeDeclareNoWait(String exchange, BuiltinExchangeType type, boolean durable, boolean autoDelete, boolean internal, Map<String, Object> arguments) {
+    public void exchangeDeclareNoWait(String exchange, BuiltinExchangeType type, boolean durable, boolean autoDelete, boolean internal, Map<String, Object> arguments) throws IOException {
         exchangeDeclareNoWait(exchange, type.getType(), durable, autoDelete, internal, arguments);
     }
 

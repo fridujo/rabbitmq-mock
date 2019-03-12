@@ -16,13 +16,13 @@ public class MockExchangeFactory {
                                       String type,
                                       AmqArguments arguments,
                                       ReceiverRegistry receiverRegistry) {
-        if ("topic".equals(type)) {
+        if (MockTopicExchange.TYPE.equals(type)) {
             return new MockTopicExchange(exchangeName, arguments, receiverRegistry);
-        } else if ("direct".equals(type)) {
+        } else if (MockDirectExchange.TYPE.equals(type)) {
             return new MockDirectExchange(exchangeName, arguments, receiverRegistry);
-        } else if ("fanout".equals(type)) {
+        } else if (MockFanoutExchange.TYPE.equals(type)) {
             return new MockFanoutExchange(exchangeName, arguments, receiverRegistry);
-        } else if ("headers".equals(type)) {
+        } else if (MockHeadersExchange.TYPE.equals(type)) {
             return new MockHeadersExchange(exchangeName, arguments, receiverRegistry);
         } else if (configuration.isAdditionalExchangeRegisteredFor(type)) {
             return configuration.getAdditionalExchangeByType(type)

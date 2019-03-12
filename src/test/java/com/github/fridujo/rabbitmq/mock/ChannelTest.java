@@ -85,6 +85,44 @@ class ChannelTest {
     }
 
     @Test
+    void exchangeDeclare_twice_keeps_existing_bindings() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                String exchangeName = "test1";
+                channel.exchangeDeclare(exchangeName, "fanout");
+                String queueName = channel.queueDeclare().getQueue();
+                channel.queueBind(queueName, exchangeName, "unused");
+                // Declare the same exchange a second time
+                channel.exchangeDeclare(exchangeName, "fanout");
+
+                channel.basicPublish("test1", "unused", null, "test".getBytes());
+                GetResponse getResponse = channel.basicGet(queueName, true);
+
+                assertThat(getResponse).isNotNull();
+            }
+        }
+    }
+
+    @Test
+    void exchangeDeclare_twice_with_a_different_type_throws() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                String exchangeName = "test1";
+                channel.exchangeDeclare(exchangeName, "fanout");
+                String queueName = channel.queueDeclare().getQueue();
+                channel.queueBind(queueName, exchangeName, "unused");
+
+                assertThatExceptionOfType(IOException.class)
+                    .isThrownBy(() -> channel.exchangeDeclare(exchangeName, "topic"))
+                    .withCauseInstanceOf(ShutdownSignalException.class)
+                    .withMessageContaining("channel error; protocol method: #method<channel.close>" +
+                        "(reply-code=406, reply-text=PRECONDITION_FAILED - inequivalent arg 'type' " +
+                        "for exchange 'test1' in vhost '/' received 'topic' but current is 'fanout', class-id=40, method-id=10)");
+            }
+        }
+    }
+
+    @Test
     void exchangeDeclareNoWait_creates_it() throws IOException, TimeoutException {
         try (Connection conn = new MockConnectionFactory().newConnection()) {
             try (Channel channel = conn.createChannel()) {

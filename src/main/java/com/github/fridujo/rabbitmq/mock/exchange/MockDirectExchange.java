@@ -7,8 +7,10 @@ import java.util.Map;
 
 public class MockDirectExchange extends BindableMockExchange {
 
+    public static final String TYPE = "direct";
+
     public MockDirectExchange(String name, AmqArguments arguments, ReceiverRegistry receiverRegistry) {
-        super(name, arguments, receiverRegistry);
+        super(name, TYPE, arguments, receiverRegistry);
     }
 
     @Override
