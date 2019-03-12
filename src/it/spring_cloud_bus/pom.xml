@@ -135,6 +135,10 @@
 
     <repositories>
         <repository>
+            <id>Maven Central</id>
+            <url>https://repo.maven.apache.org/maven2/</url>
+        </repository>
+        <repository>
             <id>Spring Milestone</id>
             <url>https://repo.spring.io/milestone/</url>
         </repository>
