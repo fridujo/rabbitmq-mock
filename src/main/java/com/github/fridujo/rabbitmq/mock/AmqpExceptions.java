@@ -24,11 +24,47 @@ public abstract class AmqpExceptions {
             replyText.toString(),
             AMQImpl.Exchange.INDEX,
             AMQImpl.Exchange.Declare.INDEX);
-        ShutdownSignalException initialEx = new ShutdownSignalException(
+        ShutdownSignalException sse = new ShutdownSignalException(
             false,
             false,
             reason,
             ref);
-        return new IOException(initialEx.sensibleClone());
+        return new IOException(sse.sensibleClone());
+    }
+
+    public static IOException exchangeNotFound(Channel ref,
+                                               String vhost,
+                                               String exchangeName) {
+        StringBuilder replyText = new StringBuilder("NOT_FOUND - no exchange '").append(exchangeName).append("' ")
+            .append("in vhost '").append(vhost).append("'");
+
+        ShutdownSignalException reason = new ShutdownSignalException(
+            false,
+            false,
+            new AMQImpl.Channel.Close(
+                404,
+                replyText.toString(),
+                AMQImpl.Exchange.INDEX,
+                AMQImpl.Exchange.Declare.INDEX),
+            ref);
+        return new IOException(reason.sensibleClone());
+    }
+
+    public static IOException queueNotFound(Channel ref,
+                                               String vhost,
+                                               String queueName) {
+        StringBuilder replyText = new StringBuilder("NOT_FOUND - no queue '").append(queueName).append("' ")
+            .append("in vhost '").append(vhost).append("'");
+
+        ShutdownSignalException reason = new ShutdownSignalException(
+            false,
+            false,
+            new AMQImpl.Channel.Close(
+                404,
+                replyText.toString(),
+                AMQImpl.Queue.INDEX,
+                AMQImpl.Queue.Declare.INDEX),
+            ref);
+        return new IOException(reason.sensibleClone());
     }
 }

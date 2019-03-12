@@ -1,7 +1,16 @@
 package com.github.fridujo.rabbitmq.mock;
 
-import com.github.fridujo.rabbitmq.mock.exchange.MockExchange;
-import com.github.fridujo.rabbitmq.mock.metrics.MetricsCollectorWrapper;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.CancelCallback;
@@ -22,16 +31,8 @@ import com.rabbitmq.client.impl.AMQImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
+import com.github.fridujo.rabbitmq.mock.exchange.MockExchange;
+import com.github.fridujo.rabbitmq.mock.metrics.MetricsCollectorWrapper;
 
 public class MockChannel implements Channel {
     private static final Logger LOGGER = LoggerFactory.getLogger(MockChannel.class);
@@ -213,7 +214,7 @@ public class MockChannel implements Channel {
     @Override
     public AMQP.Exchange.DeclareOk exchangeDeclare(String exchangeName, String type, boolean durable, boolean autoDelete, boolean internal, Map<String, Object> arguments) throws IOException {
         Optional<MockExchange> exchange = node.getExchange(exchangeName);
-        if(exchange.isPresent() && !exchange.get().getType().equals(type)) {
+        if (exchange.isPresent() && !exchange.get().getType().equals(type)) {
             throw AmqpExceptions.inequivalentExchangeRedeclare(this, "/", exchangeName, exchange.get().getType(), type);
         }
         return node.exchangeDeclare(exchangeName, type, durable, autoDelete, internal, nullToEmpty(arguments));
@@ -237,17 +238,7 @@ public class MockChannel implements Channel {
     @Override
     public AMQP.Exchange.DeclareOk exchangeDeclarePassive(String name) throws IOException {
         if (!node.getExchange(name).isPresent()) {
-            throw new IOException(new ShutdownSignalException(
-                false,
-                false,
-                new AMQImpl.Channel.Close(
-                    404,
-                    "NOT_FOUND",
-                    AMQImpl.Exchange.INDEX,
-                    AMQImpl.Exchange.Declare.INDEX),
-                null,
-                "no exchange '" + name + "' in vhost '/' ",
-                null));
+            throw AmqpExceptions.exchangeNotFound(this, "/", name);
         }
         return new AMQImpl.Exchange.DeclareOk();
     }
@@ -317,17 +308,7 @@ public class MockChannel implements Channel {
         String definitiveQueueName = lastGeneratedIfEmpty(queueName);
         Optional<MockQueue> queue = node.getQueue(definitiveQueueName);
         if (!queue.isPresent()) {
-            throw new IOException(new ShutdownSignalException(
-                false,
-                false,
-                new AMQImpl.Channel.Close(
-                    404,
-                    "NOT_FOUND",
-                    AMQImpl.Queue.INDEX,
-                    AMQImpl.Queue.Declare.INDEX),
-                null,
-                "no queue '" + definitiveQueueName + "' in vhost '/' ",
-                null));
+            throw AmqpExceptions.queueNotFound(this, "/", queueName);
         }
         return new AMQImpl.Queue.DeclareOk(definitiveQueueName, queue.get().messageCount(), queue.get().consumerCount());
     }
