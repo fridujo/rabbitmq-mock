@@ -9,7 +9,9 @@ import com.github.fridujo.rabbitmq.mock.ReceiverPointer;
 
 public class MockDefaultExchange implements MockExchange {
 
+    public static final String TYPE = "default";
     public static final String NAME = "";
+    
     private final MockNode node;
 
     public MockDefaultExchange(MockNode mockNode) {
@@ -19,6 +21,11 @@ public class MockDefaultExchange implements MockExchange {
     @Override
     public void publish(String previousExchangeName, String routingKey, AMQP.BasicProperties props, byte[] body) {
         node.getQueue(routingKey).ifPresent(q -> q.publish(NAME, routingKey, props, body));
+    }
+
+    @Override
+    public String getType() {
+        return TYPE;
     }
 
     @Override

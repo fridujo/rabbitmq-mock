@@ -13,11 +13,14 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 public class MockHeadersExchange extends BindableMockExchange {
+
+    public static final String TYPE = "headers";
+    
     private static final String MATCH_ALL = "all";
     private static final Set<String> X_MATCH_VALID_VALUES = new HashSet<>(Arrays.asList("any", MATCH_ALL));
 
     public MockHeadersExchange(String exchangeName, AmqArguments arguments, ReceiverRegistry receiverRegistry) {
-        super(exchangeName, arguments, receiverRegistry);
+        super(exchangeName, TYPE, arguments, receiverRegistry);
     }
 
     @Override

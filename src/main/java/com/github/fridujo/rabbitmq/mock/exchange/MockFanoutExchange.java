@@ -7,8 +7,10 @@ import java.util.Map;
 
 public class MockFanoutExchange extends BindableMockExchange {
 
+    public static final String TYPE = "fanout";
+
     protected MockFanoutExchange(String name, AmqArguments arguments, ReceiverRegistry receiverRegistry) {
-        super(name, arguments, receiverRegistry);
+        super(name, TYPE, arguments, receiverRegistry);
     }
 
     @Override

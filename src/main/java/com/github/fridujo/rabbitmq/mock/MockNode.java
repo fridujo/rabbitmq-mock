@@ -55,7 +55,7 @@ public class MockNode implements ReceiverRegistry, TransactionalOperations {
     }
 
     public AMQP.Exchange.DeclareOk exchangeDeclare(String exchangeName, String type, boolean durable, boolean autoDelete, boolean internal, Map<String, Object> arguments) {
-        exchanges.put(exchangeName, mockExchangeFactory.build(exchangeName, type, new AmqArguments(arguments), this));
+        exchanges.putIfAbsent(exchangeName, mockExchangeFactory.build(exchangeName, type, new AmqArguments(arguments), this));
         return new AMQImpl.Exchange.DeclareOk();
     }
 

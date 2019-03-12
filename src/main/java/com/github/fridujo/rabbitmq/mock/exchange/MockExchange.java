@@ -6,6 +6,8 @@ import com.github.fridujo.rabbitmq.mock.ReceiverPointer;
 import java.util.Map;
 
 public interface MockExchange extends Receiver {
+    
+    String getType();
 
     void bind(ReceiverPointer mockQueue, String routingKey, Map<String, Object> arguments);
 
