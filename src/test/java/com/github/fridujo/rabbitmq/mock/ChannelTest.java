@@ -138,7 +138,7 @@ class ChannelTest {
             try (Channel channel = conn.createChannel()) {
                 assertThatExceptionOfType(IOException.class)
                     .isThrownBy(() -> channel.exchangeDeclarePassive("test1"))
-                    .withMessage("com.rabbitmq.client.ShutdownSignalException: no exchange 'test1' in vhost '/' channel error; protocol method: #method<channel.close>(reply-code=404, reply-text=NOT_FOUND, class-id=40, method-id=10)")
+                    .withMessage("com.rabbitmq.client.ShutdownSignalException: channel error; protocol method: #method<channel.close>(reply-code=404, reply-text=NOT_FOUND - no exchange 'test1' in vhost '/', class-id=40, method-id=10)")
                     .withCauseExactlyInstanceOf(ShutdownSignalException.class);
             }
         }
@@ -262,7 +262,7 @@ class ChannelTest {
             try (Channel channel = conn.createChannel()) {
                 assertThatExceptionOfType(IOException.class)
                     .isThrownBy(() -> channel.queueDeclarePassive("test1"))
-                    .withMessage("com.rabbitmq.client.ShutdownSignalException: no queue 'test1' in vhost '/' channel error; protocol method: #method<channel.close>(reply-code=404, reply-text=NOT_FOUND, class-id=50, method-id=10)")
+                    .withMessage("com.rabbitmq.client.ShutdownSignalException: channel error; protocol method: #method<channel.close>(reply-code=404, reply-text=NOT_FOUND - no queue 'test1' in vhost '/', class-id=50, method-id=10)")
                     .withCauseExactlyInstanceOf(ShutdownSignalException.class);
             }
         }
