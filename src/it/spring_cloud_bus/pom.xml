@@ -16,7 +16,7 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
 
-        <rabbitmq-mock.version>1.0.9-SNAPSHOT</rabbitmq-mock.version>
+        <rabbitmq-mock.version>@rabbitmq-mock.version@</rabbitmq-mock.version>
 
         
         <spring-cloud.version>Finchley.RELEASE</spring-cloud.version>
