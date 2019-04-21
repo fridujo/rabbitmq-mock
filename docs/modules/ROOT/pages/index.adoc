@@ -1,0 +1,95 @@
+= RabbitMQ-Mock Documentation
+:keywords: rabbitmq, test, junit, spring, qpid, broker
+
+This site hosts the technical documentation for RabbitMQ-Mock.
+
+[%hardbreaks]
+This project aims to emulate RabbitMQ behavior for test purposes.
+*RabbitMQ-Mock* makes it easy to test against a RabbitMQ broker without having to start one, or using Qpid as a replacement.
+
+
+== Getting started
+
+[#maven]
+=== Maven
+
+Add the following dependency to the *pom.xml* file
+[source,xml]
+----
+<dependency>
+    <groupId>com.github.fridujo</groupId>
+    <artifactId>rabbitmq-mock</artifactId>
+    <version>{page-component-version}</version>
+    <scope>test</scope>
+</dependency>
+----
+
+[#gradle]
+=== Gradle
+
+Add the following dependency to the *build.gradle*
+[source,groovy]
+----
+repositories {
+	mavenCentral()
+}
+
+// ...
+
+dependencies {
+	// ...
+	testImplementation('com.github.fridujo:rabbitmq-mock:{page-component-version}')
+	// ...
+}
+----
+
+[#use]
+== When using ConnectionFactory directly
+
+Replace the use of `com.rabbitmq.client.ConnectionFactory` by link:https://github.com/fridujo/rabbitmq-mock/blob/{page-component-version}/src/main/java/com/github/fridujo/rabbitmq/mock/MockConnectionFactory.java[`MockConnectionFactory`]
+[source,java]
+----
+ConnectionFactory factory = new MockConnectionFactory(); # <1>
+try (Connection conn = factory.newConnection()) {
+    try (Channel channel = conn.createChannel()) {
+        GetResponse response = channel.basicGet(queueName, autoAck);
+        byte[] body = response.getBody();
+        long deliveryTag = response.getEnvelope().getDeliveryTag();
+
+        // Do what you need with the body
+
+        channel.basicAck(deliveryTag, false);
+    }
+}
+----
+<1> The only thing that changes: substitute the `ConnectionFactory` with the mock one.
+
+[#spring]
+== When using Spring
+
+Change underlying RabbitMQ `ConnectionFactory` by link:https://github.com/fridujo/rabbitmq-mock/blob/{page-component-version}/src/main/java/com/github/fridujo/rabbitmq/mock/MockConnectionFactory.java[`MockConnectionFactory`]
+[source,java]
+----
+@Configuration
+@Import(AppConfiguration.class) # <2>
+class TestConfiguration { # <1>
+    @Bean ConnectionFactory connectionFactory() { # <3>
+        return new CachingConnectionFactory(new MockConnectionFactory());
+    }
+}
+----
+<1> Define or reuse a *Spring* configuration dedicated for integration tests
+<2> Import the configuration (maybe partial) containing RabbitMq configuration
+<3> Override the `connectionFactory` bean with the *Spring* wrapper delegating to `MockConnectionFactory`
+
+[#plugins]
+== Plugins
+[%hardbreaks]
+Some plugins, like the link:https://github.com/rabbitmq/rabbitmq-sharding[*rabbitmq-sharding*] one, adds more exchange types (ex: `"x-modulus-hash"`).
+*RabbitMQ-Mock* supports default *exchange* types: direct, fanout, topic and headers.
+To add a new type of exchange, use the `withAdditionalExchange` method on a `MockConnectionFactory`.
+For example:
+[source,java]
+----
+var connectionFactory = new MockConnectionFactory().withAdditionalExchange(new FixDelayExchangeCreator());
+----
