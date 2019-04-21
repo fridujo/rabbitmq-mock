@@ -1,0 +1,7 @@
+* xref:index.adoc[RabbitMQ-Mock]
+* Getting started
+** xref:index.adoc#maven[Maven]
+** xref:index.adoc#gradle[Gradle]
+* xref:index.adoc#use[Your first test]
+* xref:index.adoc#spring[Integrating with Spring]
+* xref:index.adoc#plugins[Custom plugins]
