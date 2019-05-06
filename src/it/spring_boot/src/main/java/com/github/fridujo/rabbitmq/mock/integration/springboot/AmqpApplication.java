@@ -1,9 +1,15 @@
 package com.github.fridujo.rabbitmq.mock.integration.springboot;
 
+import java.util.concurrent.TimeUnit;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+
+import com.rabbitmq.client.Channel;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.TopicExchange;
+import org.springframework.amqp.rabbit.connection.Connection;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import org.springframework.amqp.rabbit.listener.adapter.MessageListenerAdapter;
@@ -12,8 +18,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 
-import java.util.concurrent.TimeUnit;
-
 @SpringBootApplication
 public class AmqpApplication {
 
@@ -21,11 +25,24 @@ public class AmqpApplication {
 
     public static void main(String[] args) throws InterruptedException {
         try (ConfigurableApplicationContext context = SpringApplication.run(AmqpApplication.class, args)) {
+            rawConfiguration(context.getBean(ConnectionFactory.class));
+
             context.getBean(Sender.class).send();
             Receiver receiver = context.getBean(Receiver.class);
             while (receiver.getMessages().isEmpty()) {
                 TimeUnit.MILLISECONDS.sleep(100L);
             }
+        }
+    }
+
+    private static void rawConfiguration(ConnectionFactory connectionFactory) {
+        try {
+            // Connection & Channel may not yet implement AutoCloseable
+            Connection connection = connectionFactory.createConnection();
+            Channel channel = connection.createChannel(false);
+            channel.exchangeDeclare("xyz", "direct", true);
+        } catch(IOException e) {
+            throw new UncheckedIOException("Failed to declare an Exchange using Channel directly", e);
         }
     }
 
