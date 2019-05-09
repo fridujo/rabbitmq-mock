@@ -12,6 +12,8 @@ import com.rabbitmq.client.ShutdownSignalException;
 import com.rabbitmq.client.UnblockedCallback;
 import com.rabbitmq.client.impl.AMQConnection;
 import com.rabbitmq.client.impl.DefaultExceptionHandler;
+import com.rabbitmq.client.impl.LongStringHelper;
+import com.rabbitmq.client.impl.Version;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -74,7 +76,8 @@ public class MockConnection implements Connection {
 
     @Override
     public Map<String, Object> getServerProperties() {
-        return Collections.emptyMap();
+        return Collections.singletonMap("version",
+            LongStringHelper.asLongString(new Version(AMQP.PROTOCOL.MAJOR, AMQP.PROTOCOL.MINOR).toString()));
     }
 
     @Override
