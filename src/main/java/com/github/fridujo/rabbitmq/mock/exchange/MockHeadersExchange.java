@@ -1,8 +1,5 @@
 package com.github.fridujo.rabbitmq.mock.exchange;
 
-import com.github.fridujo.rabbitmq.mock.AmqArguments;
-import com.github.fridujo.rabbitmq.mock.ReceiverRegistry;
-
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
@@ -12,10 +9,13 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
-public class MockHeadersExchange extends BindableMockExchange {
+import com.github.fridujo.rabbitmq.mock.AmqArguments;
+import com.github.fridujo.rabbitmq.mock.ReceiverRegistry;
+
+public class MockHeadersExchange extends MultipleReceiverExchange {
 
     public static final String TYPE = "headers";
-    
+
     private static final String MATCH_ALL = "all";
     private static final Set<String> X_MATCH_VALID_VALUES = new HashSet<>(Arrays.asList("any", MATCH_ALL));
 

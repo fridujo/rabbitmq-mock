@@ -5,7 +5,7 @@ import java.util.Map;
 import com.github.fridujo.rabbitmq.mock.AmqArguments;
 import com.github.fridujo.rabbitmq.mock.ReceiverRegistry;
 
-public class MockDirectExchange extends BindableMockExchange {
+public class MockDirectExchange extends MultipleReceiverExchange {
 
     public static final String TYPE = "direct";
 

@@ -5,7 +5,7 @@ import java.util.Map;
 import com.github.fridujo.rabbitmq.mock.AmqArguments;
 import com.github.fridujo.rabbitmq.mock.ReceiverRegistry;
 
-public class MockFanoutExchange extends BindableMockExchange {
+public class MockFanoutExchange extends MultipleReceiverExchange {
 
     public static final String TYPE = "fanout";
 
