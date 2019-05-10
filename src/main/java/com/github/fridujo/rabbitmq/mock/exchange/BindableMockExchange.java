@@ -7,6 +7,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,10 +44,7 @@ public abstract class BindableMockExchange implements MockExchange {
 
     @Override
     public void publish(String previousExchangeName, String routingKey, AMQP.BasicProperties props, byte[] body) {
-        Set<Receiver> matchingReceivers = bindConfigurations
-            .stream()
-            .filter(bindConfiguration -> match(bindConfiguration, routingKey, props.getHeaders()))
-            .map(BindConfiguration::receiverPointer)
+        Set<Receiver> matchingReceivers = matchingReceivers(routingKey, props)
             .map(receiverRegistry::getReceiver)
             .filter(Optional::isPresent)
             .map(Optional::get)
@@ -70,7 +68,7 @@ public abstract class BindableMockExchange implements MockExchange {
         return arguments.getAlternateExchange().flatMap(receiverRegistry::getReceiver);
     }
 
-    protected abstract boolean match(BindConfiguration bindConfiguration, String routingKey, Map<String, Object> headers);
+    protected abstract Stream<ReceiverPointer> matchingReceivers(String routingKey, AMQP.BasicProperties props);
 
     private String localized(String message) {
         return "[E " + name + "] " + message;

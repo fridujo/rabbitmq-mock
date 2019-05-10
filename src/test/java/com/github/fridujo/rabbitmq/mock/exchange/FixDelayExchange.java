@@ -3,12 +3,11 @@ package com.github.fridujo.rabbitmq.mock.exchange;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import com.rabbitmq.client.AMQP;
-
 import com.github.fridujo.rabbitmq.mock.AmqArguments;
 import com.github.fridujo.rabbitmq.mock.ReceiverRegistry;
+import com.rabbitmq.client.AMQP;
 
-public class FixDelayExchange extends BindableMockExchange {
+public class FixDelayExchange extends MultipleReceiverExchange {
 
     public static final String TYPE = "x-fix-delayed-message";
 

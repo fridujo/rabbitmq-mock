@@ -60,9 +60,9 @@ class ExchangeTest {
             "some.other.key, some.other.key"
         })
         void binding_key_matches_routing_key(String bindingKey, String routingKey) {
-            BindableMockExchange directExchange = mockExchangeFactory.build("test", BuiltinExchangeType.DIRECT.getType(), empty(), mock(ReceiverRegistry.class));
+            MultipleReceiverExchange directExchange = (MultipleReceiverExchange) mockExchangeFactory.build("test", BuiltinExchangeType.DIRECT.getType(), empty(), mock(ReceiverRegistry.class));
             BindConfiguration bindConfiguration = new BindConfiguration(bindingKey, null, emptyMap());
-            
+
             assertThat(directExchange.match(bindConfiguration, routingKey, emptyMap())).isTrue();
         }
 
@@ -73,9 +73,9 @@ class ExchangeTest {
             "lazy.#, lazy.pink.rabbit"
         })
         void binding_key_does_not_match_routing_key(String bindingKey, String routingKey) {
-            BindableMockExchange directExchange = mockExchangeFactory.build("test", BuiltinExchangeType.DIRECT.getType(), empty(), mock(ReceiverRegistry.class));
+            MultipleReceiverExchange directExchange = (MultipleReceiverExchange) mockExchangeFactory.build("test", BuiltinExchangeType.DIRECT.getType(), empty(), mock(ReceiverRegistry.class));
             BindConfiguration bindConfiguration = new BindConfiguration(bindingKey, null, emptyMap());
-            
+
             assertThat(directExchange.match(bindConfiguration, routingKey, emptyMap())).isFalse();
         }
     }
@@ -97,9 +97,9 @@ class ExchangeTest {
             "lazy.#, quick.brown.fox"
         })
         void binding_key_matches_routing_key(String bindingKey, String routingKey) {
-            BindableMockExchange fanoutExchange = mockExchangeFactory.build("test", BuiltinExchangeType.FANOUT.getType(), empty(), mock(ReceiverRegistry.class));
+            MultipleReceiverExchange fanoutExchange = (MultipleReceiverExchange) mockExchangeFactory.build("test", BuiltinExchangeType.FANOUT.getType(), empty(), mock(ReceiverRegistry.class));
             BindConfiguration bindConfiguration = new BindConfiguration(bindingKey, null, emptyMap());
-            
+
             assertThat(fanoutExchange.match(bindConfiguration, routingKey, emptyMap())).isTrue();
         }
     }
@@ -115,9 +115,9 @@ class ExchangeTest {
             "lazy.#, lazy.pink.rabbit"
         })
         void binding_key_matches_routing_key(String bindingKey, String routingKey) {
-            BindableMockExchange topicExchange = mockExchangeFactory.build("test", BuiltinExchangeType.TOPIC.getType(), empty(), mock(ReceiverRegistry.class));
+            MultipleReceiverExchange topicExchange = (MultipleReceiverExchange) mockExchangeFactory.build("test", BuiltinExchangeType.TOPIC.getType(), empty(), mock(ReceiverRegistry.class));
             BindConfiguration bindConfiguration = new BindConfiguration(bindingKey, null, emptyMap());
-            
+
             assertThat(topicExchange.match(bindConfiguration, routingKey, emptyMap())).isTrue();
         }
 
@@ -131,9 +131,9 @@ class ExchangeTest {
             "lazy.#, quick.brown.fox"
         })
         void binding_key_does_not_match_routing_key(String bindingKey, String routingKey) {
-            BindableMockExchange topicExchange = mockExchangeFactory.build("test", BuiltinExchangeType.TOPIC.getType(), empty(), mock(ReceiverRegistry.class));
+            MultipleReceiverExchange topicExchange = (MultipleReceiverExchange) mockExchangeFactory.build("test", BuiltinExchangeType.TOPIC.getType(), empty(), mock(ReceiverRegistry.class));
             BindConfiguration bindConfiguration = new BindConfiguration(bindingKey, null, emptyMap());
-            
+
             assertThat(topicExchange.match(bindConfiguration, routingKey, emptyMap())).isFalse();
         }
     }
@@ -149,10 +149,10 @@ class ExchangeTest {
             "'os, linux, cores, 8', true",
         })
         void headers_topic_without_x_match_does_not_match_if_one_header_is_not_matching(String headers, boolean matches) {
-            BindableMockExchange headersExchange = mockExchangeFactory.build("test", BuiltinExchangeType.HEADERS.getType(), empty(), mock(ReceiverRegistry.class));
+            MultipleReceiverExchange headersExchange = (MultipleReceiverExchange) mockExchangeFactory.build("test", BuiltinExchangeType.HEADERS.getType(), empty(), mock(ReceiverRegistry.class));
             BindConfiguration bindConfiguration = new BindConfiguration("unused", null,
                 map("os", "linux", "cores", "8"));
-            
+
             assertThat(headersExchange.match(bindConfiguration, "unused", map(headers.split(",\\s*")))).isEqualTo(matches);
         }
 
@@ -164,10 +164,10 @@ class ExchangeTest {
             "'os, linux, cores, 8', true",
         })
         void headers_topic_with_x_match_all_does_not_match_if_one_header_is_not_matching(String headers, boolean matches) {
-            BindableMockExchange headersExchange = mockExchangeFactory.build("test", BuiltinExchangeType.HEADERS.getType(), empty(), mock(ReceiverRegistry.class));
+            MultipleReceiverExchange headersExchange = (MultipleReceiverExchange) mockExchangeFactory.build("test", BuiltinExchangeType.HEADERS.getType(), empty(), mock(ReceiverRegistry.class));
             BindConfiguration bindConfiguration = new BindConfiguration("unused", null,
                 map("os", "linux", "cores", "8", "x-match", "all"));
-            
+
             assertThat(headersExchange.match(bindConfiguration, "unused", map(headers.split(",\\s*")))).isEqualTo(matches);
         }
 
@@ -181,10 +181,10 @@ class ExchangeTest {
             "'os, ios, cores, 8', true",
         })
         void headers_topic_with_x_match_any_matches_if_one_header_is_matching(String headers, boolean matches) {
-            BindableMockExchange headersExchange = mockExchangeFactory.build("test", BuiltinExchangeType.HEADERS.getType(), empty(), mock(ReceiverRegistry.class));
+            MultipleReceiverExchange headersExchange = (MultipleReceiverExchange) mockExchangeFactory.build("test", BuiltinExchangeType.HEADERS.getType(), empty(), mock(ReceiverRegistry.class));
             BindConfiguration bindConfiguration = new BindConfiguration("unused", null,
                 map("os", "linux", "cores", "8", "x-match", "any"));
-            
+
             assertThat(headersExchange.match(bindConfiguration, "unused", map(headers.split(",\\s*")))).isEqualTo(matches);
         }
 

@@ -5,7 +5,7 @@ import java.util.Map;
 import com.github.fridujo.rabbitmq.mock.AmqArguments;
 import com.github.fridujo.rabbitmq.mock.ReceiverRegistry;
 
-public class MockTopicExchange extends BindableMockExchange {
+public class MockTopicExchange extends MultipleReceiverExchange {
 
     public static final String TYPE = "topic";
 
