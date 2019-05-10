@@ -1,9 +1,10 @@
 package com.github.fridujo.rabbitmq.mock.compatibility;
 
+import static com.github.fridujo.rabbitmq.mock.tool.Classes.missingClass;
+
+import com.github.fridujo.rabbitmq.mock.ConfigurableConnectionFactory;
 import com.github.fridujo.rabbitmq.mock.MockConnectionFactory;
 import com.rabbitmq.client.ConnectionFactory;
-
-import static com.github.fridujo.rabbitmq.mock.tool.Classes.missingClass;
 
 /**
  * Factory building a mock implementation of {@link ConnectionFactory} according to the
@@ -11,11 +12,11 @@ import static com.github.fridujo.rabbitmq.mock.tool.Classes.missingClass;
  */
 public class MockConnectionFactoryFactory {
 
-    public static ConnectionFactory build() {
+    public static ConfigurableConnectionFactory<?> build() {
         return build(MockConnectionFactoryFactory.class.getClassLoader());
     }
 
-    public static ConnectionFactory build(ClassLoader classLoader) {
+    public static ConfigurableConnectionFactory<?> build(ClassLoader classLoader) {
         if (missingClass(classLoader, "com.rabbitmq.client.AddressResolver")) {
             // AddressResolver appears in version 3.6.6 of amqp-client
             // This execution branch is tested in spring-boot integration test with version 1.4.0.RELEASE
