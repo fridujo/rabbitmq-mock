@@ -1,18 +1,22 @@
 package com.github.fridujo.rabbitmq.mock.exchange;
 
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import com.github.fridujo.rabbitmq.mock.AmqArguments;
 import com.github.fridujo.rabbitmq.mock.ReceiverRegistry;
 import com.rabbitmq.client.AMQP;
 
-public class FixDelayExchange extends MultipleReceiverExchange {
+public class FixDelayExchange extends MockDirectExchange {
 
     public static final String TYPE = "x-fix-delayed-message";
 
     public FixDelayExchange(String name, AmqArguments arguments, ReceiverRegistry receiverRegistry) {
-        super(name, TYPE, arguments, receiverRegistry);
+        super(name, arguments, receiverRegistry);
+    }
+
+    @Override
+    public String getType() {
+        return TYPE;
     }
 
     @Override
@@ -22,10 +26,5 @@ public class FixDelayExchange extends MultipleReceiverExchange {
         } catch (InterruptedException e) {
         }
         super.publish(previousExchangeName, routingKey, props, body);
-    }
-
-    @Override
-    protected boolean match(BindConfiguration bindConfiguration, String routingKey, Map<String, Object> headers) {
-        return bindConfiguration.bindingKey.equals(routingKey);
     }
 }
