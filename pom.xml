@@ -19,22 +19,22 @@
 
         <rabbitmq.client.version>5.7.0</rabbitmq.client.version>
 
-        <assertj.version>3.11.1</assertj.version>
-        <mockito.version>2.23.0</mockito.version>
-        <micrometer.version>1.1.0</micrometer.version>
-        <spring.amqp.version>2.1.0.RELEASE</spring.amqp.version>
+        <assertj.version>3.12.2</assertj.version>
+        <mockito.version>2.27.0</mockito.version>
+        <micrometer.version>1.1.4</micrometer.version>
+        <spring.amqp.version>2.1.5.RELEASE</spring.amqp.version>
         <logback.version>1.2.3</logback.version>
 
-        <junit.jupiter.version>5.3.1</junit.jupiter.version>
+        <junit.jupiter.version>5.4.2</junit.jupiter.version>
         <pitest-junit5.version>0.8</pitest-junit5.version>
 
-        <maven-javadoc-plugin.version>3.0.1</maven-javadoc-plugin.version>
+        <maven-javadoc-plugin.version>3.1.0</maven-javadoc-plugin.version>
         <maven-source-plugin.version>3.0.1</maven-source-plugin.version>
-        <maven-surefire-plugin.version>2.22.1</maven-surefire-plugin.version>
-        <maven-invoker-plugin.version>3.1.0</maven-invoker-plugin.version>
+        <maven-surefire-plugin.version>2.22.2</maven-surefire-plugin.version>
+        <maven-invoker-plugin.version>3.2.0</maven-invoker-plugin.version>
         <nexus-staging-maven-plugin.version>1.6.8</nexus-staging-maven-plugin.version>
         <cobertura-maven-plugin.version>2.7</cobertura-maven-plugin.version>
-        <pitest-maven-plugin.version>1.4.3</pitest-maven-plugin.version>
+        <pitest-maven-plugin.version>1.4.7</pitest-maven-plugin.version>
     </properties>
 
     <scm>
@@ -102,19 +102,7 @@
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-api</artifactId>
-            <version>${junit.jupiter.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <version>${junit.jupiter.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-params</artifactId>
+            <artifactId>junit-jupiter</artifactId>
             <version>${junit.jupiter.version}</version>
             <scope>test</scope>
         </dependency>
