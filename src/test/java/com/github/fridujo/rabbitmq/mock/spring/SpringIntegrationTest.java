@@ -27,7 +27,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
-import com.github.fridujo.rabbitmq.mock.MockConnectionFactory;
+import com.github.fridujo.rabbitmq.mock.compatibility.MockConnectionFactoryFactory;
 import com.github.fridujo.rabbitmq.mock.exchange.FixDelayExchange;
 
 class SpringIntegrationTest {
@@ -100,7 +100,9 @@ class SpringIntegrationTest {
         @Bean
         ConnectionFactory connectionFactory() {
             return new CachingConnectionFactory(
-                new MockConnectionFactory()
+                MockConnectionFactoryFactory
+                    .build()
+                    .enableConsistentHashPlugin()
                     .withAdditionalExchange(creatorWithExchangeType("x-fix-delayed-message", FixDelayExchange::new))
             );
         }

@@ -9,8 +9,9 @@ import com.github.fridujo.rabbitmq.mock.exchange.TypedMockExchangeCreator;
 public class Configuration {
     private Map<String, MockExchangeCreator> additionalExchangeCreatorsByType = new LinkedHashMap<>();
 
-    public void registerAdditionalExchangeCreator(TypedMockExchangeCreator mockExchangeCreator) {
+    public Configuration registerAdditionalExchangeCreator(TypedMockExchangeCreator mockExchangeCreator) {
         additionalExchangeCreatorsByType.put(mockExchangeCreator.getType(), mockExchangeCreator);
+        return this;
     }
 
     public MockExchangeCreator getAdditionalExchangeByType(String type) {
