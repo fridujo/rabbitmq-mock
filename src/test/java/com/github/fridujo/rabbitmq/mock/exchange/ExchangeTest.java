@@ -1,5 +1,6 @@
 package com.github.fridujo.rabbitmq.mock.exchange;
 
+import static com.github.fridujo.rabbitmq.mock.AmqArguments.empty;
 import static com.github.fridujo.rabbitmq.mock.exchange.MockExchangeCreator.creatorWithExchangeType;
 import static java.util.Collections.emptyMap;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -20,7 +21,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 
-import com.github.fridujo.rabbitmq.mock.AmqArguments;
 import com.github.fridujo.rabbitmq.mock.MockNode;
 import com.github.fridujo.rabbitmq.mock.MockQueue;
 import com.github.fridujo.rabbitmq.mock.ReceiverRegistry;
@@ -33,10 +33,6 @@ class ExchangeTest {
 
     private final Configuration configuration = new Configuration();
     private final MockExchangeFactory mockExchangeFactory = new MockExchangeFactory(configuration);
-
-    private static final AmqArguments empty() {
-        return new AmqArguments(emptyMap());
-    }
 
     @Test
     void mockExchangeFactory_throws_if_type_is_unknown() {

@@ -1,5 +1,7 @@
 package com.github.fridujo.rabbitmq.mock;
 
+import static java.util.Collections.emptyMap;
+
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
@@ -14,6 +16,10 @@ public class AmqArguments {
     public static final String MAX_PRIORITY_KEY = "x-max-priority";
     private final String ALTERNATE_EXCHANGE_KEY = "alternate-exchange";
     private final Map<String, Object> arguments;
+
+    public static AmqArguments empty() {
+        return new AmqArguments(emptyMap());
+    }
 
     public AmqArguments(Map<String, Object> arguments) {
         this.arguments = arguments;
