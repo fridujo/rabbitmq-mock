@@ -87,6 +87,13 @@ class TestConfiguration { # <1>
 [%hardbreaks]
 Some plugins, like the link:https://github.com/rabbitmq/rabbitmq-sharding[*rabbitmq-sharding*] one, adds more exchange types (ex: `"x-modulus-hash"`).
 *RabbitMQ-Mock* supports default *exchange* types: direct, fanout, topic and headers.
+
+You can enable the built-in plugin link:https://github.com/rabbitmq/rabbitmq-consistent-hash-exchange[*consistent-hash-exchange*]:
+[source,java]
+----
+var connectionFactory = new MockConnectionFactory().enableConsistentHashPlugin();
+----
+
 To add a new type of exchange, use the `withAdditionalExchange` method on a `MockConnectionFactory`.
 For example:
 [source,java]
