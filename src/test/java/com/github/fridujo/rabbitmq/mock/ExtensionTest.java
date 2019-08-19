@@ -4,6 +4,7 @@ import static com.github.fridujo.rabbitmq.mock.configuration.QueueDeclarator.dyn
 import static com.github.fridujo.rabbitmq.mock.configuration.QueueDeclarator.queue;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 
 import java.io.IOException;
@@ -13,10 +14,19 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 
+import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestFactory;
+
+import com.github.fridujo.rabbitmq.mock.configuration.QueueDeclarator;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.Channel;
@@ -25,10 +35,6 @@ import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.DefaultConsumer;
 import com.rabbitmq.client.Envelope;
 import com.rabbitmq.client.GetResponse;
-import org.junit.jupiter.api.DynamicTest;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestFactory;
 
 class ExtensionTest {
 
@@ -61,6 +67,62 @@ class ExtensionTest {
     }
 
     @Test
+    void check_xdeath_header_count_increments_for_the_same_q_and_reason() throws IOException, TimeoutException, InterruptedException {
+        try (MockConnection conn = new MockConnectionFactory().newConnection()) {
+            try (MockChannel channel = conn.createChannel()) {
+
+                Semaphore se = new Semaphore(0);
+
+                QueueDeclarator.queue("timed").withMessageTtl(1L).withDeadLetterExchange("rejected-ex").declare(channel);
+                QueueDeclarator.queue("fruits").withDeadLetterExchange("rejected-ex").declare(channel);
+                channel.exchangeDeclare("rejected-ex", BuiltinExchangeType.FANOUT);
+                channel.queueBindNoWait("fruits", "rejected-ex", "unused", null);
+
+                AtomicInteger nackCounter = new AtomicInteger();
+                AtomicReference<AMQP.BasicProperties> messagePropertiesAfterMultipleReject = new AtomicReference<>();
+
+                channel.basicConsume("fruits", new DefaultConsumer(channel) {
+                    @Override
+                    public void handleDelivery(String consumerTag,
+                                               Envelope envelope,
+                                               AMQP.BasicProperties properties,
+                                               byte[] body) {
+                        if (nackCounter.incrementAndGet() <= 4) {
+                            channel.basicNack(envelope.getDeliveryTag(), false, false);
+                        } else {
+                            channel.basicAck(envelope.getDeliveryTag(), false);
+                            messagePropertiesAfterMultipleReject.set(properties);
+                            se.release();
+                        }
+                    }
+                });
+
+                channel.basicPublish("", "timed", null, "banana".getBytes());
+
+                se.acquire();
+
+                assertThat(messagePropertiesAfterMultipleReject.get().getHeaders()).containsKey("x-death");
+                List<Map<String, Object>> xDeathHeader = (List<Map<String, Object>>) messagePropertiesAfterMultipleReject.get().getHeaders().get("x-death");
+                assertThat(xDeathHeader).hasSize(2);
+                assertThat(xDeathHeader.get(0))
+                    .containsEntry("queue", "fruits")
+                    .containsEntry("reason", "rejected")
+                    .containsEntry("exchange", "rejected-ex")
+                    .containsEntry("routing-keys", Collections.singletonList("timed"))
+                    .containsEntry("count", 4L)
+                ;
+                assertThat(xDeathHeader.get(1))
+                    .containsEntry("queue", "timed")
+                    .containsEntry("reason", "expired")
+                    .containsEntry("exchange", "")
+                    .containsEntry("routing-keys", Collections.singletonList("timed"))
+                    .containsEntry("count", 1L)
+                ;
+            }
+        }
+    }
+
+    @Test
     void dead_letter_exchange_is_used_when_a_message_is_rejected_without_requeue() throws IOException, TimeoutException {
         try (Connection conn = new MockConnectionFactory().newConnection()) {
             try (Channel channel = conn.createChannel()) {
@@ -78,6 +140,11 @@ class ExtensionTest {
                 getResponse = channel.basicGet("fruits", false);
                 channel.basicReject(getResponse.getEnvelope().getDeliveryTag(), false);
                 assertThat(channel.messageCount("rejected")).isEqualTo(1);
+                GetResponse basicGet = channel.basicGet("rejected", true);
+
+                List<Map<String, Object>> xDeathHeaders = (List<Map<String, Object>>) basicGet.getProps().getHeaders().get("x-death");
+                assertEquals(xDeathHeaders.get(0).get("reason").toString(), "rejected");
+                assertEquals(xDeathHeaders.get(0).get("queue").toString(), "fruits");
                 assertThat(channel.messageCount("fruits")).isEqualTo(0);
             }
         }
@@ -142,6 +209,11 @@ class ExtensionTest {
 
                     getResponse = channel.basicGet("rejected", true);
                     assertThat(getResponse).isNotNull();
+
+                    List<Map<String, Object>> xDeathHeaders = (List<Map<String, Object>>) getResponse.getProps().getHeaders().get("x-death");
+                    assertEquals(xDeathHeaders.get(0).get("reason").toString(), "expired");
+                    assertEquals(xDeathHeaders.get(0).get("queue").toString(), "fruits");
+
                 }
             }
         }
@@ -376,10 +448,13 @@ class ExtensionTest {
     class QueueLengthLimit {
 
         @Test
-        void oldest_message_is_dropped_when_length_limit_is_reached() {
+        void oldest_message_is_dropped_when_length_limit_is_reached() throws IOException {
             try (MockConnection conn = new MockConnectionFactory().newConnection()) {
                 try (MockChannel channel = conn.createChannel()) {
-                    String queueName = dynamicQueue().withMaxLength(2).declare(channel).getQueue();
+                    channel.exchangeDeclare("rejected-ex", BuiltinExchangeType.FANOUT);
+                    channel.queueDeclare("rejected", true, false, false, null);
+                    channel.queueBindNoWait("rejected", "rejected-ex", "unused", null);
+                    String queueName = dynamicQueue().withMaxLength(2).withDeadLetterExchange("rejected-ex").declare(channel).getQueue();
 
                     IntStream.range(0, 6).forEach(i ->
                         channel.basicPublish("", queueName, null, Integer.valueOf(i).toString().getBytes())
@@ -388,6 +463,15 @@ class ExtensionTest {
                     assertThat(channel.messageCount(""))
                         .as("Queue length")
                         .isEqualTo(2);
+
+                    assertThat(channel.messageCount("rejected"))
+                        .as("Rejected Queue length")
+                        .isEqualTo(4);
+                    GetResponse basicGet = channel.basicGet("rejected", true);
+
+                    List<Map<String, Object>> xDeathHeaders = (List<Map<String, Object>>) basicGet.getProps().getHeaders().get("x-death");
+                    assertEquals(xDeathHeaders.get(0).get("reason").toString(), "maxlen");
+                    assertEquals(xDeathHeaders.get(0).get("queue").toString(), queueName);
 
                     assertThat(new String(channel.basicGet("", true).getBody())).isEqualTo("4");
                     assertThat(new String(channel.basicGet("", true).getBody())).isEqualTo("5");

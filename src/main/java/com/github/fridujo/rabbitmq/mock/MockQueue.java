@@ -20,14 +20,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
-import com.rabbitmq.client.AMQP;
-import com.rabbitmq.client.Consumer;
-import com.rabbitmq.client.Envelope;
-import com.rabbitmq.client.GetResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.fridujo.rabbitmq.mock.tool.NamedThreadFactory;
+import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.AMQP.BasicProperties;
+import com.rabbitmq.client.Consumer;
+import com.rabbitmq.client.Envelope;
+import com.rabbitmq.client.GetResponse;
 
 public class MockQueue implements Receiver {
     private static final Logger LOGGER = LoggerFactory.getLogger(MockQueue.class);
@@ -84,7 +85,7 @@ public class MockQueue implements Receiver {
             Message message = messages.poll();
             if (message != null) {
                 if (message.isExpired()) {
-                    deadLetter(message);
+                    deadLetterWithReason(message, DeadLettering.ReasonType.EXPIRED);
                 } else {
                     int index = consumerRollingSequence.incrementAndGet() % consumersByTag.size();
                     ConsumerAndTag nextConsumer = new ArrayList<>(consumersByTag.values()).get(index);
@@ -120,7 +121,7 @@ public class MockQueue implements Receiver {
         if (potentiallyExpired != null && potentiallyExpired.isExpired()) {
             Message expiredMessage = messages.poll();
             if (potentiallyExpired == expiredMessage) {
-                deadLetter(expiredMessage);
+                deadLetterWithReason(expiredMessage, DeadLettering.ReasonType.EXPIRED);
                 return true;
             }
         }
@@ -147,7 +148,7 @@ public class MockQueue implements Receiver {
         }
         boolean messagePersisted = messages.offer(message);
         if (queueLengthLimitReached) {
-            deadLetter(messages.poll());
+            deadLetterWithReason(messages.poll(), DeadLettering.ReasonType.MAX_LEN);
         }
     }
 
@@ -167,7 +168,7 @@ public class MockQueue implements Receiver {
         Message message = messages.poll();
         if (message != null) {
             if (message.isExpired()) {
-                deadLetter(message);
+                deadLetterWithReason(message, DeadLettering.ReasonType.EXPIRED);
                 return null;
             } else {
                 if (!autoAck) {
@@ -213,23 +214,9 @@ public class MockQueue implements Receiver {
             if (requeue) {
                 messages.offer(nacked);
             } else {
-                deadLetter(nacked);
+                deadLetterWithReason(nacked, DeadLettering.ReasonType.REJECTED);
             }
         }
-    }
-
-    private void deadLetter(Message message) {
-        arguments.getDeadLetterExchange()
-            .flatMap(receiverRegistry::getReceiver)
-            .ifPresent(deadLetterExchange -> {
-                    LOGGER.debug(localized("dead-lettered to " + deadLetterExchange + ": " + message));
-                    deadLetterExchange.publish(
-                        message.exchangeName,
-                        arguments.getDeadLetterRoutingKey().orElse(message.routingKey),
-                        message.props,
-                        message.body);
-                }
-            );
     }
 
     private String localized(String message) {
@@ -340,6 +327,22 @@ public class MockQueue implements Receiver {
     @Override
     public String toString() {
         return "Queue " + name;
+    }
+
+    private void deadLetterWithReason(Message message, DeadLettering.ReasonType reason) {
+        arguments.getDeadLetterExchange()
+            .flatMap(receiverRegistry::getReceiver)
+            .ifPresent(deadLetterExchange -> {
+                    LOGGER.debug(localized("dead-lettered to " + deadLetterExchange + ": " + message));
+                    DeadLettering.Event event = new DeadLettering.Event(name, reason, message, 1);
+                    BasicProperties props = event.prependOn(message.props);
+                    deadLetterExchange.publish(
+                        message.exchangeName,
+                        arguments.getDeadLetterRoutingKey().orElse(message.routingKey),
+                        props,
+                        message.body);
+                }
+            );
     }
 
     static class ConsumerAndTag {
