@@ -372,11 +372,11 @@ public class MockQueue implements Receiver {
             .flatMap(receiverRegistry::getReceiver)
             .ifPresent(deadLetterExchange -> {
                     LOGGER.debug(localized("dead-lettered to " + deadLetterExchange + ": " + message));
-                    addNewXDeathInfo(message,reason);
+                    BasicProperties props = addNewXDeathInfo(message,reason);
                     deadLetterExchange.publish(
                         message.exchangeName,
                         arguments.getDeadLetterRoutingKey().orElse(message.routingKey),
-                        message.props,
+                        props,
                         message.body);
                 }
             );

@@ -4,6 +4,7 @@ import static com.github.fridujo.rabbitmq.mock.configuration.QueueDeclarator.dyn
 import static com.github.fridujo.rabbitmq.mock.configuration.QueueDeclarator.queue;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 
 import java.io.IOException;
@@ -59,6 +60,65 @@ class ExtensionTest {
             }
         }
     }
+    
+    @Test
+    void check_xdeath_header_count_increments_for_the_same_q_and_reason() throws IOException, TimeoutException, InterruptedException {
+    	try (Connection conn = new MockConnectionFactory().newConnection()) {
+    		try (Channel channel = conn.createChannel()) {
+    			channel.exchangeDeclare("rejected-ex", BuiltinExchangeType.FANOUT);
+
+    			Map<String, Object> args = new HashMap<>();
+    			args.put("x-message-ttl", 0);//immediate
+    			args.put("x-dead-letter-exchange", "");
+    			channel.queueDeclare("rejected", true, false, false, args);
+    			channel.queueBindNoWait("rejected", "rejected-ex", "unused", null);
+    			channel.queueDeclare("fruits", true, false, false, Collections.singletonMap("x-dead-letter-exchange", "rejected-ex"));
+
+    			channel.basicConsume("fruits", new DefaultConsumer(channel) {
+    				@Override
+    				public void handleDelivery(String consumerTag,
+    						Envelope envelope,
+    						AMQP.BasicProperties properties,
+    						byte[] body) throws IOException {
+
+    					if(properties.getHeaders()!=null)
+    					{
+                           List<Map<String,Object>> xdeathHeaders = (List<Map<String, Object>>) properties.getHeaders().get("x-death");
+
+    						if(xdeathHeaders!=null)
+    						{
+    							Map<String, Object> xDeathInfo = xdeathHeaders.stream().filter(xDeath -> "fruits".equalsIgnoreCase(xDeath.get("queue").toString()) && "rejected".equalsIgnoreCase(xDeath.get("reason").toString())).findAny().orElse(null);
+
+    							if(xDeathInfo!=null)
+    							{
+    								Long count  = (Long) xDeathInfo.get("count");
+    								if(count == 4)
+    								{
+    									channel.basicAck(envelope.getDeliveryTag(), false);
+
+    									assertEquals(xdeathHeaders.get(0).get("reason").toString(), "expired");
+    									assertEquals(xdeathHeaders.get(0).get("queue").toString(), "rejected");
+
+                                        assertEquals(xdeathHeaders.get(1).get("reason").toString(), "rejected");
+    									assertEquals(xdeathHeaders.get(1).get("queue").toString(), "fruits");
+                                    }
+    							}
+
+    						}
+    					}
+
+    					channel.basicNack(envelope.getDeliveryTag(), false, false);
+
+    				}
+    			});
+
+    			channel.basicPublish("", "fruits", null, "banana".getBytes());
+
+    			TimeUnit.MILLISECONDS.sleep(10000L);
+
+    		}
+    	}
+    }
 
     @Test
     void dead_letter_exchange_is_used_when_a_message_is_rejected_without_requeue() throws IOException, TimeoutException {
@@ -78,6 +138,11 @@ class ExtensionTest {
                 getResponse = channel.basicGet("fruits", false);
                 channel.basicReject(getResponse.getEnvelope().getDeliveryTag(), false);
                 assertThat(channel.messageCount("rejected")).isEqualTo(1);
+                GetResponse basicGet = channel.basicGet("rejected", true);
+                
+                List<Map<String,Object>> xDeathHeaders = (List<Map<String, Object>>) basicGet.getProps().getHeaders().get("x-death");
+                assertEquals(xDeathHeaders.get(0).get("reason").toString(), "rejected");
+                assertEquals(xDeathHeaders.get(0).get("queue").toString(), "fruits");
                 assertThat(channel.messageCount("fruits")).isEqualTo(0);
             }
         }
@@ -142,6 +207,11 @@ class ExtensionTest {
 
                     getResponse = channel.basicGet("rejected", true);
                     assertThat(getResponse).isNotNull();
+                    
+                    List<Map<String,Object>> xDeathHeaders = (List<Map<String, Object>>) getResponse.getProps().getHeaders().get("x-death");
+                    assertEquals(xDeathHeaders.get(0).get("reason").toString(), "expired");
+                    assertEquals(xDeathHeaders.get(0).get("queue").toString(), "fruits");
+                    
                 }
             }
         }
@@ -376,10 +446,13 @@ class ExtensionTest {
     class QueueLengthLimit {
 
         @Test
-        void oldest_message_is_dropped_when_length_limit_is_reached() {
+        void oldest_message_is_dropped_when_length_limit_is_reached() throws IOException {
             try (MockConnection conn = new MockConnectionFactory().newConnection()) {
                 try (MockChannel channel = conn.createChannel()) {
-                    String queueName = dynamicQueue().withMaxLength(2).declare(channel).getQueue();
+                	channel.exchangeDeclare("rejected-ex", BuiltinExchangeType.FANOUT);
+                	channel.queueDeclare("rejected", true, false, false, null);
+                    channel.queueBindNoWait("rejected", "rejected-ex", "unused", null);
+                    String queueName = dynamicQueue().withMaxLength(2).withDeadLetterExchange("rejected-ex").declare(channel).getQueue();
 
                     IntStream.range(0, 6).forEach(i ->
                         channel.basicPublish("", queueName, null, Integer.valueOf(i).toString().getBytes())
@@ -388,7 +461,16 @@ class ExtensionTest {
                     assertThat(channel.messageCount(""))
                         .as("Queue length")
                         .isEqualTo(2);
-
+                    
+                    assertThat(channel.messageCount("rejected"))
+                    .as("Rejected Queue length")
+                    .isEqualTo(4);
+                    GetResponse basicGet = channel.basicGet("rejected", true);
+                    
+                    List<Map<String,Object>> xDeathHeaders = (List<Map<String, Object>>) basicGet.getProps().getHeaders().get("x-death");
+                    assertEquals(xDeathHeaders.get(0).get("reason").toString(), "maxlen");
+                    assertEquals(xDeathHeaders.get(0).get("queue").toString(),queueName);
+                    
                     assertThat(new String(channel.basicGet("", true).getBody())).isEqualTo("4");
                     assertThat(new String(channel.basicGet("", true).getBody())).isEqualTo("5");
                 }
