@@ -27,8 +27,8 @@ public class QueueDeclarator {
         return queue("");
     }
 
-    public QueueDeclarator withMessageTtl(long messageTtl) {
-        queueArgs.put(AmqArguments.MESSAGE_TTL_KEY, messageTtl);
+    public QueueDeclarator withMessageTtl(long messageTtlInMs) {
+        queueArgs.put(AmqArguments.MESSAGE_TTL_KEY, messageTtlInMs);
         return this;
     }
 
