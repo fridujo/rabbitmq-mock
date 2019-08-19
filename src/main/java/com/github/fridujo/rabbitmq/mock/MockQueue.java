@@ -6,8 +6,11 @@ import static com.github.fridujo.rabbitmq.mock.tool.Exceptions.runAndTransformEx
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
@@ -21,6 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.AMQP.BasicProperties;
 import com.rabbitmq.client.Consumer;
 import com.rabbitmq.client.Envelope;
 import com.rabbitmq.client.GetResponse;
@@ -84,7 +88,8 @@ public class MockQueue implements Receiver {
             Message message = messages.poll();
             if (message != null) {
                 if (message.isExpired()) {
-                    deadLetter(message);
+                    //deadLetter(message);
+                	deadLetterWithReason(message, ReasonType.expired);
                 } else {
                     int index = consumerRollingSequence.incrementAndGet() % consumersByTag.size();
                     ConsumerAndTag nextConsumer = new ArrayList<>(consumersByTag.values()).get(index);
@@ -120,7 +125,8 @@ public class MockQueue implements Receiver {
         if (potentiallyExpired != null && potentiallyExpired.isExpired()) {
             Message expiredMessage = messages.poll();
             if (potentiallyExpired == expiredMessage) {
-                deadLetter(expiredMessage);
+              // deadLetter(expiredMessage);
+            	deadLetterWithReason(expiredMessage, ReasonType.expired);
                 return true;
             }
         }
@@ -147,7 +153,8 @@ public class MockQueue implements Receiver {
         }
         boolean messagePersisted = messages.offer(message);
         if (queueLengthLimitReached) {
-            deadLetter(messages.poll());
+            //deadLetter(messages.poll());
+        	deadLetterWithReason(messages.poll(), ReasonType.maxlen);
         }
     }
 
@@ -167,7 +174,8 @@ public class MockQueue implements Receiver {
         Message message = messages.poll();
         if (message != null) {
             if (message.isExpired()) {
-                deadLetter(message);
+                //deadLetter(message);
+            	deadLetterWithReason(message,ReasonType.expired);
                 return null;
             } else {
                 if (!autoAck) {
@@ -213,12 +221,13 @@ public class MockQueue implements Receiver {
             if (requeue) {
                 messages.offer(nacked);
             } else {
-                deadLetter(nacked);
+               // deadLetter(nacked);
+            	deadLetterWithReason(nacked, ReasonType.rejected);
             }
         }
     }
 
-    private void deadLetter(Message message) {
+/*    private void deadLetter(Message message) {
         arguments.getDeadLetterExchange()
             .flatMap(receiverRegistry::getReceiver)
             .ifPresent(deadLetterExchange -> {
@@ -231,7 +240,7 @@ public class MockQueue implements Receiver {
                 }
             );
     }
-
+*/
     private String localized(String message) {
         return "[Q " + name + "] " + message;
     }
@@ -355,5 +364,118 @@ public class MockQueue implements Receiver {
             this.autoAck = autoAck;
             this.deliveryTagSupplier = deliveryTagSupplier;
         }
+    }
+    
+    private void deadLetterWithReason(Message message,ReasonType reason) 
+    {
+        arguments.getDeadLetterExchange()
+            .flatMap(receiverRegistry::getReceiver)
+            .ifPresent(deadLetterExchange -> {
+                    LOGGER.debug(localized("dead-lettered to " + deadLetterExchange + ": " + message));
+                    addNewXDeathInfo(message,reason);
+                    deadLetterExchange.publish(
+                        message.exchangeName,
+                        arguments.getDeadLetterRoutingKey().orElse(message.routingKey),
+                        message.props,
+                        message.body);
+                }
+            );
+    }
+    
+    private BasicProperties addNewXDeathInfo(Message message,ReasonType reason) 
+    {
+    	
+    	BasicProperties props = message.props;
+    	
+    	BasicProperties propsWithXdeathHeader =props;
+    	
+    	if(props.getHeaders()!=null)
+    	{
+    		LinkedList<Map<String, Object>> xDeathHeaders = (LinkedList<Map<String, Object>>)props.getHeaders().get("x-death");
+    		
+    		if(xDeathHeaders!=null)
+    		{
+    			  Map<String, Object> newXDeathInfo = new HashMap<String, Object>();
+    			  newXDeathInfo.put("reason", reason);
+    			  newXDeathInfo.put("queue", this.name);
+    			  newXDeathInfo.put("exchange", message.exchangeName);
+    			  newXDeathInfo.put("routing-keys", message.routingKey);
+    			  newXDeathInfo.put("count",1L);
+    			  
+    		      addToExistingXdeathHeaders(newXDeathInfo,xDeathHeaders);
+    		}
+    		else
+    		{
+    		  Map<String, Object> newXDeathInfo = new HashMap<String, Object>();
+    		  newXDeathInfo.put("reason", reason);
+    		  newXDeathInfo.put("queue", this.name);
+    		  newXDeathInfo.put("exchange", message.exchangeName);
+    		  newXDeathInfo.put("routing-keys", message.routingKey);
+    		  newXDeathInfo.put("count",1L);
+  		      
+  			  xDeathHeaders = new LinkedList<>();
+  			  xDeathHeaders.add(newXDeathInfo);
+  			  
+  			  Map<String, Object> headers = props.getHeaders();
+  			  headers.put("x-death", xDeathHeaders);
+  			  
+  			 propsWithXdeathHeader = props.builder().headers(headers).build();
+    		}
+    	}
+    	else
+    	{
+    		  Map<String, Object> newXDeathInfo = new HashMap<String, Object>();
+    		  newXDeathInfo.put("reason", reason);
+    		  newXDeathInfo.put("queue", this.name);
+    		  newXDeathInfo.put("exchange", message.exchangeName);
+    		  newXDeathInfo.put("routing-keys", message.routingKey);
+    		  newXDeathInfo.put("count",1L);
+		      
+			  LinkedList<Map<String, Object>> xDeathHeaders = new LinkedList<>();
+			  xDeathHeaders.add(newXDeathInfo);
+			  
+			  Map<String, Object> headers = new HashMap<>();
+			  headers.put("x-death", xDeathHeaders);
+			  
+    		propsWithXdeathHeader = props.builder().headers(headers).build();
+    	}
+    	
+        return propsWithXdeathHeader;
+    }
+    
+    private void addToExistingXdeathHeaders(Map<String, Object> newXDeathInfo,LinkedList<Map<String,Object>> existingXdeathHeaders)
+    {
+    	Map<String, Object>  xDeathHeaderofTheCurrentQ =null;
+    	
+    	for (Map<String, Object> xDeath : existingXdeathHeaders) 
+    	{
+			String qName = (String) xDeath.get("queue");
+    		ReasonType reason  = (ReasonType) xDeath.get("reason");
+    		
+    		if(qName.equalsIgnoreCase((String) newXDeathInfo.get("queue")) && reason.equals(newXDeathInfo.get("reason")) )
+    		{
+    			xDeathHeaderofTheCurrentQ = xDeath;
+    			break;
+    		}
+		}
+    	
+    	if(xDeathHeaderofTheCurrentQ==null)
+    	{
+    		existingXdeathHeaders.offerFirst(newXDeathInfo);
+    	}
+    	else
+    	{
+    		existingXdeathHeaders.remove(xDeathHeaderofTheCurrentQ);
+        	
+    		xDeathHeaderofTheCurrentQ.put("count", (Long)xDeathHeaderofTheCurrentQ.get("count")+1L);
+        	
+        	existingXdeathHeaders.offerFirst(xDeathHeaderofTheCurrentQ);
+    	}
+    	
+    }
+    
+    private enum ReasonType
+    {
+    	expired,rejected,maxlen,delivery_limit
     }
 }
