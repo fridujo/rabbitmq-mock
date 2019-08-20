@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.IntStream;
@@ -65,6 +66,11 @@ class ExtensionTest {
     void check_xdeath_header_count_increments_for_the_same_q_and_reason() throws IOException, TimeoutException, InterruptedException {
     	try (Connection conn = new MockConnectionFactory().newConnection()) {
     		try (Channel channel = conn.createChannel()) {
+    			
+    			Semaphore se = new Semaphore(0);
+    			
+    			  List<Map<String,Object>> xdeathHeaders = new ArrayList<>();
+    			 
     			channel.exchangeDeclare("rejected-ex", BuiltinExchangeType.FANOUT);
 
     			Map<String, Object> args = new HashMap<>();
@@ -83,11 +89,11 @@ class ExtensionTest {
 
     					if(properties.getHeaders()!=null)
     					{
-                           List<Map<String,Object>> xdeathHeaders = (List<Map<String, Object>>) properties.getHeaders().get("x-death");
+                           List<Map<String,Object>> headers = (List<Map<String, Object>>) properties.getHeaders().get("x-death");
 
-    						if(xdeathHeaders!=null)
+    						if(headers!=null)
     						{
-    							Map<String, Object> xDeathInfo = xdeathHeaders.stream().filter(xDeath -> "fruits".equalsIgnoreCase(xDeath.get("queue").toString()) && "rejected".equalsIgnoreCase(xDeath.get("reason").toString())).findAny().orElse(null);
+    							Map<String, Object> xDeathInfo = headers.stream().filter(xDeath -> "fruits".equalsIgnoreCase(xDeath.get("queue").toString()) && "rejected".equalsIgnoreCase(xDeath.get("reason").toString())).findAny().orElse(null);
 
     							if(xDeathInfo!=null)
     							{
@@ -95,12 +101,8 @@ class ExtensionTest {
     								if(count == 4)
     								{
     									channel.basicAck(envelope.getDeliveryTag(), false);
-
-    									assertEquals(xdeathHeaders.get(0).get("reason").toString(), "expired");
-    									assertEquals(xdeathHeaders.get(0).get("queue").toString(), "rejected");
-
-                                        assertEquals(xdeathHeaders.get(1).get("reason").toString(), "rejected");
-    									assertEquals(xdeathHeaders.get(1).get("queue").toString(), "fruits");
+                                        xdeathHeaders.addAll(headers);
+    									se.release();
                                     }
     							}
 
@@ -113,8 +115,14 @@ class ExtensionTest {
     			});
 
     			channel.basicPublish("", "fruits", null, "banana".getBytes());
+    			
+    			se.acquire();
+    			
+    			assertEquals(xdeathHeaders.get(0).get("reason").toString(), "expired");
+				assertEquals(xdeathHeaders.get(0).get("queue").toString(), "rejected");
 
-    			TimeUnit.MILLISECONDS.sleep(10000L);
+                assertEquals(xdeathHeaders.get(1).get("reason").toString(), "rejected");
+				assertEquals(xdeathHeaders.get(1).get("queue").toString(), "fruits");
 
     		}
     	}
