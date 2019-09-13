@@ -65,6 +65,7 @@ public interface DeadLettering {
             return entry;
         }
 
+        @SuppressWarnings("unchecked")
         public AMQP.BasicProperties prependOn(AMQP.BasicProperties props) {
             Map<String, Object> headers = Optional.ofNullable(props.getHeaders()).map(HashMap::new).orElseGet(HashMap::new);
 
