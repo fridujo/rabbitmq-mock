@@ -146,7 +146,7 @@ public class MockQueue implements Receiver {
         } else {
             LOGGER.debug(localized("Message published" + ": " + message));
         }
-        boolean messagePersisted = messages.offer(message);
+        messages.offer(message);
         if (queueLengthLimitReached) {
             deadLetterWithReason(messages.poll(), DeadLettering.ReasonType.MAX_LEN);
         }
