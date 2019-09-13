@@ -177,8 +177,12 @@ public class MockNode implements ReceiverRegistry, TransactionalOperations {
         return queue.consumerCount();
     }
 
+    public MockNode restartDeliveryLoops() {
+        queues.values().forEach(MockQueue::restartDeliveryLoop);
+        return this;
+    }
+
     public void close() {
-        queues.values().forEach(MockQueue::notifyDeleted);
         queues.values().forEach(MockQueue::close);
     }
 

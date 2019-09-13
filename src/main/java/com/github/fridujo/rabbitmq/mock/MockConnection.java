@@ -33,7 +33,7 @@ public class MockConnection implements Connection {
     private String id;
 
     public MockConnection(MockNode mockNode, MetricsCollectorWrapper metricsCollectorWrapper) {
-        this.mockNode = mockNode;
+        this.mockNode = mockNode.restartDeliveryLoops();
         this.metricsCollectorWrapper = metricsCollectorWrapper;
         this.address = new InetSocketAddress("127.0.0.1", 0).getAddress();
         this.metricsCollectorWrapper.newConnection(this);

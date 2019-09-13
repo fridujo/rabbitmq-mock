@@ -12,7 +12,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -24,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.fridujo.rabbitmq.mock.tool.NamedThreadFactory;
+import com.github.fridujo.rabbitmq.mock.tool.RestartableExecutorService;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.AMQP.BasicProperties;
 import com.rabbitmq.client.Consumer;
@@ -40,7 +40,7 @@ public class MockQueue implements Receiver {
     private final ReceiverRegistry receiverRegistry;
     private final MockChannel mockChannel;
     private final Queue<Message> messages;
-    private final ExecutorService executorService;
+    private final RestartableExecutorService executorService;
     private final Map<String, ConsumerAndTag> consumersByTag = new LinkedHashMap<>();
     private final AtomicInteger consumerRollingSequence = new AtomicInteger();
     private final AtomicInteger messageSequence = new AtomicInteger();
@@ -55,7 +55,7 @@ public class MockQueue implements Receiver {
         this.mockChannel = mockChannel;
 
         messages = new PriorityBlockingQueue<>(11, new MessageComparator(arguments));
-        executorService = Executors.newFixedThreadPool(1, new NamedThreadFactory(i -> name + "_queue_consuming"));
+        executorService = new RestartableExecutorService(() -> Executors.newFixedThreadPool(1, new NamedThreadFactory(i -> name + "_queue_consuming")));
         start();
     }
 
@@ -230,8 +230,34 @@ public class MockQueue implements Receiver {
         }
     }
 
+    public synchronized void restartDeliveryLoop() {
+        if(!running.get()) {
+            running.set(true);
+            executorService.restart();
+            start();
+        }
+    }
+
     public void notifyDeleted() {
+        close();
+    }
+
+    public void close() {
         running.set(false);
+        cancelConsumers();
+        stopDeliveryLoop();
+    }
+
+    private void stopDeliveryLoop() {
+        executorService.shutdown();
+        runAndEatExceptions(() ->
+            executorService.awaitTermination(
+                SLEEPING_TIME_BETWEEN_SUBMISSIONS_TO_CONSUMERS * 3,
+                TimeUnit.MILLISECONDS)
+        );
+    }
+
+    private void cancelConsumers() {
         for (ConsumerAndTag consumerAndTag : consumersByTag.values()) {
             try {
                 consumerAndTag.consumer.handleCancel(consumerAndTag.tag);
@@ -239,17 +265,7 @@ public class MockQueue implements Receiver {
                 LOGGER.warn("Consumer threw an exception when notified about cancellation", e);
             }
         }
-
-    }
-
-    public void close() {
-        running.set(false);
-        executorService.shutdown();
-        runAndEatExceptions(() ->
-            executorService.awaitTermination(
-                SLEEPING_TIME_BETWEEN_SUBMISSIONS_TO_CONSUMERS * 3,
-                TimeUnit.MILLISECONDS)
-        );
+        consumersByTag.clear();
     }
 
     public void basicRecover(boolean requeue) {

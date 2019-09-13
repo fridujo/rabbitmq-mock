@@ -6,10 +6,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
+import org.junit.jupiter.api.Test;
 
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
@@ -18,7 +21,6 @@ import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.DefaultConsumer;
 import com.rabbitmq.client.Envelope;
 import com.rabbitmq.client.GetResponse;
-import org.junit.jupiter.api.Test;
 
 class ComplexUseCasesTests {
 
@@ -132,6 +134,42 @@ class ComplexUseCasesTests {
                 GetResponse kiwiMessage = channel.basicGet("fruits", true);
                 assertThat(kiwiMessage).isNull(); // dead-lettered but not by the queue event-loop
                 consuming.release();
+            }
+        }
+    }
+
+    @Test
+    void can_consume_messages_published_in_a_previous_connection() throws InterruptedException {
+        MockConnectionFactory connectionFactory = new MockConnectionFactory();
+        try (MockConnection conn = connectionFactory.newConnection()) {
+            try (MockChannel channel = conn.createChannel()) {
+                queue("numbers").declare(channel);
+                Arrays.asList("one", "two", "three").stream().forEach(message ->
+                    channel.basicPublish("", "numbers", null, message.getBytes())
+                );
+            }
+        }
+
+        try (MockConnection conn = connectionFactory.newConnection()) {
+            try (MockChannel channel = conn.createChannel()) {
+
+                List<String> messages = new ArrayList<>();
+                Semaphore deliveries = new Semaphore(-2);
+
+                channel.basicConsume("numbers", new DefaultConsumer(channel) {
+                    @Override
+                    public void handleDelivery(String consumerTag,
+                                               Envelope envelope,
+                                               AMQP.BasicProperties properties,
+                                               byte[] body) {
+                        messages.add(new String(body));
+                        deliveries.release();
+                    }
+                });
+
+                assertThat(deliveries.tryAcquire(1, TimeUnit.SECONDS)).as("Messages have been delivered").isTrue();
+
+                assertThat(messages).containsExactly("one", "two", "three");
             }
         }
     }
