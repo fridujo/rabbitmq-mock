@@ -173,4 +173,42 @@ class ComplexUseCasesTests {
             }
         }
     }
+
+    @Test
+    void closing_one_connection_does_not_cancel_consumers_defined_within_another_one() throws InterruptedException {
+        MockConnectionFactory connectionFactory = new MockConnectionFactory();
+        try (MockConnection conn = connectionFactory.newConnection()) {
+            try (MockChannel channel = conn.createChannel()) {
+                queue("numbers").declare(channel);
+
+                List<String> messages = new ArrayList<>();
+                Semaphore deliveries = new Semaphore(-2);
+
+                channel.basicConsume("numbers", new DefaultConsumer(channel) {
+                    @Override
+                    public void handleDelivery(String consumerTag,
+                                               Envelope envelope,
+                                               AMQP.BasicProperties properties,
+                                               byte[] body) {
+                        messages.add(new String(body));
+                        deliveries.release();
+                    }
+                });
+
+                connectionFactory.newConnection().close();
+
+                try (MockConnection conn2 = connectionFactory.newConnection()) {
+                    try (MockChannel channel2 = conn.createChannel()) {
+                        Arrays.asList("one", "two", "three").stream().forEach(message ->
+                            channel2.basicPublish("", "numbers", null, message.getBytes())
+                        );
+                    }
+                }
+
+                assertThat(deliveries.tryAcquire(1, TimeUnit.SECONDS)).as("Messages have been delivered").isTrue();
+
+                assertThat(messages).containsExactly("one", "two", "three");
+            }
+        }
+    }
 }

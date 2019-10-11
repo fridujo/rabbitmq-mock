@@ -157,9 +157,9 @@ public class MockQueue implements Receiver {
         return pointer;
     }
 
-    public void basicConsume(String consumerTag, Consumer consumer, boolean autoAck, Supplier<Long> deliveryTagSupplier) {
+    public void basicConsume(String consumerTag, Consumer consumer, boolean autoAck, Supplier<Long> deliveryTagSupplier, MockConnection mockConnection) {
         LOGGER.debug(localized("registering consumer"));
-        consumersByTag.put(consumerTag, new ConsumerAndTag(consumerTag, consumer, autoAck, deliveryTagSupplier));
+        consumersByTag.put(consumerTag, new ConsumerAndTag(consumerTag, consumer, autoAck, deliveryTagSupplier, mockConnection));
         consumer.handleConsumeOk(consumerTag);
     }
 
@@ -242,6 +242,20 @@ public class MockQueue implements Receiver {
         close();
     }
 
+    public void close(MockConnection mockConnection) {
+        consumersByTag.entrySet().removeIf(e -> {
+            final boolean mustCancelConsumer = e.getValue().mockConnection == mockConnection;
+            if(mustCancelConsumer) {
+                cancel(e.getValue());
+            }
+            return mustCancelConsumer;
+        });
+        if(consumersByTag.isEmpty()) {
+            running.set(false);
+            stopDeliveryLoop();
+        }
+    }
+
     public void close() {
         running.set(false);
         cancelConsumers();
@@ -259,13 +273,17 @@ public class MockQueue implements Receiver {
 
     private void cancelConsumers() {
         for (ConsumerAndTag consumerAndTag : consumersByTag.values()) {
-            try {
-                consumerAndTag.consumer.handleCancel(consumerAndTag.tag);
-            } catch (IOException e) {
-                LOGGER.warn("Consumer threw an exception when notified about cancellation", e);
-            }
+            cancel(consumerAndTag);
         }
         consumersByTag.clear();
+    }
+
+    private void cancel(ConsumerAndTag consumerAndTag) {
+        try {
+            consumerAndTag.consumer.handleCancel(consumerAndTag.tag);
+        } catch (IOException e) {
+            LOGGER.warn("Consumer threw an exception when notified about cancellation", e);
+        }
     }
 
     public void basicRecover(boolean requeue) {
@@ -367,12 +385,14 @@ public class MockQueue implements Receiver {
         private final Consumer consumer;
         private final boolean autoAck;
         private final Supplier<Long> deliveryTagSupplier;
+        private final MockConnection mockConnection;
 
-        ConsumerAndTag(String tag, Consumer consumer, boolean autoAck, Supplier<Long> deliveryTagSupplier) {
+        ConsumerAndTag(String tag, Consumer consumer, boolean autoAck, Supplier<Long> deliveryTagSupplier, MockConnection mockConnection) {
             this.tag = tag;
             this.consumer = consumer;
             this.autoAck = autoAck;
             this.deliveryTagSupplier = deliveryTagSupplier;
+            this.mockConnection = mockConnection;
         }
     }
 }

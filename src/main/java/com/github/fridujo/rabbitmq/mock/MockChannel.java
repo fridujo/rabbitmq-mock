@@ -11,6 +11,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.github.fridujo.rabbitmq.mock.exchange.MockExchange;
+import com.github.fridujo.rabbitmq.mock.metrics.MetricsCollectorWrapper;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.CancelCallback;
@@ -28,11 +33,6 @@ import com.rabbitmq.client.ReturnListener;
 import com.rabbitmq.client.ShutdownListener;
 import com.rabbitmq.client.ShutdownSignalException;
 import com.rabbitmq.client.impl.AMQImpl;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.github.fridujo.rabbitmq.mock.exchange.MockExchange;
-import com.github.fridujo.rabbitmq.mock.metrics.MetricsCollectorWrapper;
 
 public class MockChannel implements Channel {
     private static final Logger LOGGER = LoggerFactory.getLogger(MockChannel.class);
@@ -467,7 +467,7 @@ public class MockChannel implements Channel {
 
     @Override
     public String basicConsume(String queue, boolean autoAck, String consumerTag, boolean noLocal, boolean exclusive, Map<String, Object> arguments, Consumer callback) {
-        String serverConsumerTag = node.basicConsume(lastGeneratedIfEmpty(queue), autoAck, consumerTag, noLocal, exclusive, nullToEmpty(arguments), callback, this::nextDeliveryTag);
+        String serverConsumerTag = node.basicConsume(lastGeneratedIfEmpty(queue), autoAck, consumerTag, noLocal, exclusive, nullToEmpty(arguments), callback, this::nextDeliveryTag, mockConnection);
         metricsCollectorWrapper.basicConsume(this, serverConsumerTag, autoAck);
         return serverConsumerTag;
     }
