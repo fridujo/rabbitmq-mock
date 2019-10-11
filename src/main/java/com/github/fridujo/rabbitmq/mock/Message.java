@@ -13,14 +13,24 @@ public class Message {
     public final AMQP.BasicProperties props;
     public final byte[] body;
     public final long expiryTime;
+    public final boolean redelivered;
 
     public Message(int id, String exchangeName, String routingKey, AMQP.BasicProperties props, byte[] body, long expiryTime) {
+        this(id, exchangeName, routingKey, props, body, expiryTime, false);
+    }
+
+    private Message(int id, String exchangeName, String routingKey, AMQP.BasicProperties props, byte[] body, long expiryTime, boolean redelivered) {
         this.id = id;
         this.exchangeName = exchangeName;
         this.routingKey = routingKey;
         this.props = props;
         this.body = body;
         this.expiryTime = expiryTime;
+        this.redelivered = redelivered;
+    }
+
+    public Message asRedelivered() {
+        return new Message(id, exchangeName, routingKey, props, body, expiryTime, true);
     }
 
     public boolean isExpired() {

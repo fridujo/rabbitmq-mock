@@ -93,7 +93,7 @@ public class MockQueue implements Receiver {
                     unackedMessagesByDeliveryTag.put(deliveryTag, message);
 
                     Envelope envelope = new Envelope(deliveryTag,
-                        false,
+                        message.redelivered,
                         message.exchangeName,
                         message.routingKey);
                     try {
@@ -212,7 +212,7 @@ public class MockQueue implements Receiver {
         Message nacked = unackedMessagesByDeliveryTag.remove(deliveryTag);
         if (nacked != null) {
             if (requeue) {
-                messages.offer(nacked);
+                messages.offer(nacked.asRedelivered());
             } else {
                 deadLetterWithReason(nacked, DeadLettering.ReasonType.REJECTED);
             }
