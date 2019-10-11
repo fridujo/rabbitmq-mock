@@ -1,15 +1,19 @@
 package com.github.fridujo.rabbitmq.mock;
 
+import static com.github.fridujo.rabbitmq.mock.configuration.QueueDeclarator.queue;
+import static com.github.fridujo.rabbitmq.mock.tool.Exceptions.runAndEatExceptions;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Channel;
@@ -144,5 +148,41 @@ class IntegrationTest {
         assertThat(atomicInteger.get())
             .describedAs("After connection closed, and Consumer cancellation, no message should be delivered anymore")
             .isZero();
+    }
+
+    @Test
+    void redelivered_message_should_have_redelivery_marked_as_true() throws IOException, TimeoutException, InterruptedException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            CountDownLatch messagesToBeProcessed = new CountDownLatch(2);
+            try (Channel channel = conn.createChannel()) {
+                queue("fruits").declare(channel);
+                AtomicReference<Envelope> redeliveredMessageEnvelope = new AtomicReference();
+
+                channel.basicConsume("fruits", new DefaultConsumer(channel) {
+                    @Override
+                    public void handleDelivery(String consumerTag,
+                                               Envelope envelope,
+                                               AMQP.BasicProperties properties,
+                                               byte[] body) {
+                        if(messagesToBeProcessed.getCount() == 1){
+                            redeliveredMessageEnvelope.set(envelope);
+                            runAndEatExceptions(messagesToBeProcessed::countDown);
+
+                        }else{
+                            runAndEatExceptions(() -> channel.basicNack(envelope.getDeliveryTag(), false, true));
+                            runAndEatExceptions(messagesToBeProcessed::countDown);
+                        }
+
+                    }
+                });
+
+                channel.basicPublish("", "fruits", null, "banana".getBytes());
+
+                final boolean finishedProperly = messagesToBeProcessed.await(1000, TimeUnit.SECONDS);
+                assertThat(finishedProperly).isTrue();
+                assertThat(redeliveredMessageEnvelope.get()).isNotNull();
+                assertThat(redeliveredMessageEnvelope.get().isRedeliver()).isTrue();
+            }
+        }
     }
 }
