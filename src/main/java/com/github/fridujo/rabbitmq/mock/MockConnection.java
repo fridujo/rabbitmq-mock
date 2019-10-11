@@ -1,5 +1,12 @@
 package com.github.fridujo.rabbitmq.mock;
 
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.util.Collections;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import com.github.fridujo.rabbitmq.mock.metrics.MetricsCollectorWrapper;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.AlreadyClosedException;
@@ -14,13 +21,6 @@ import com.rabbitmq.client.impl.AMQConnection;
 import com.rabbitmq.client.impl.DefaultExceptionHandler;
 import com.rabbitmq.client.impl.LongStringHelper;
 import com.rabbitmq.client.impl.Version;
-
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.util.Collections;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class MockConnection implements Connection {
 
@@ -112,7 +112,7 @@ public class MockConnection implements Connection {
     public void close(int closeCode, String closeMessage, int timeout) {
         metricsCollectorWrapper.closeConnection(this);
         opened.set(false);
-        mockNode.close();
+        mockNode.close(this);
     }
 
     @Override

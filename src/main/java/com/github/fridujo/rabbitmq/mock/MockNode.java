@@ -37,7 +37,7 @@ public class MockNode implements ReceiverRegistry, TransactionalOperations {
         exchange.publish(null, routingKey, props, body);
     }
 
-    public String basicConsume(String queueName, boolean autoAck, String consumerTag, boolean noLocal, boolean exclusive, Map<String, Object> arguments, Consumer callback, Supplier<Long> deliveryTagSupplier) {
+    public String basicConsume(String queueName, boolean autoAck, String consumerTag, boolean noLocal, boolean exclusive, Map<String, Object> arguments, Consumer callback, Supplier<Long> deliveryTagSupplier, MockConnection mockConnection) {
         final String definitiveConsumerTag;
         if ("".equals(consumerTag)) {
             definitiveConsumerTag = consumerTagGenerator.generate();
@@ -45,7 +45,7 @@ public class MockNode implements ReceiverRegistry, TransactionalOperations {
             definitiveConsumerTag = consumerTag;
         }
 
-        getQueueUnchecked(queueName).basicConsume(definitiveConsumerTag, callback, autoAck, deliveryTagSupplier);
+        getQueueUnchecked(queueName).basicConsume(definitiveConsumerTag, callback, autoAck, deliveryTagSupplier, mockConnection);
 
         return definitiveConsumerTag;
     }
@@ -182,8 +182,8 @@ public class MockNode implements ReceiverRegistry, TransactionalOperations {
         return this;
     }
 
-    public void close() {
-        queues.values().forEach(MockQueue::close);
+    public void close(MockConnection mockConnection) {
+        queues.values().forEach(q -> q.close(mockConnection));
     }
 
     public Configuration getConfiguration() {
