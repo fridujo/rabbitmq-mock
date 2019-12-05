@@ -55,6 +55,11 @@ class TestConfiguration {
 
 More details in [integration-test](src/test/java/com/github/fridujo/rabbitmq/mock/spring/SpringIntegrationTest.java)
 
+## Contribute
+Any contribution is greatly appreciated. Please check out the [guide](CONTRIBUTING.md) for more details.
+
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#github.com/fridujo/rabbitmq-mock.git)
+
 ## Getting Started
 
 ### Maven
