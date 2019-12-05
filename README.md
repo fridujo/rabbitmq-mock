@@ -8,7 +8,7 @@
 
 Mock for RabbitMQ Java [amqp-client](https://github.com/rabbitmq/rabbitmq-java-client).
 
-> Compatible with versions **4.0.0** to **5.6.0** of [**com.rabbitmq:amqp-client**](https://github.com/rabbitmq/rabbitmq-java-client)
+> Compatible with versions **4.0.0** to **5.7.3** of [**com.rabbitmq:amqp-client**](https://github.com/rabbitmq/rabbitmq-java-client)
 
 > Compatible with versions **3.6.3** to **4.0.0** with the [`com.github.fridujo.rabbitmq.mock.compatibility` package](src/main/java/com/github/fridujo/rabbitmq/mock/compatibility/MockConnectionFactoryFactory.java).
 
