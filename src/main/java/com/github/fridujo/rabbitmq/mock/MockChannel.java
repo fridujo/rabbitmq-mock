@@ -521,7 +521,6 @@ public class MockChannel implements Channel {
             throw new IllegalStateException("No started transaction (make sure you called txSelect before txCommit");
         }
         transaction.commit();
-        transaction = null;
         return new AMQImpl.Tx.CommitOk();
     }
 
@@ -530,7 +529,6 @@ public class MockChannel implements Channel {
         if (transaction == null) {
             throw new IllegalStateException("No started transaction (make sure you called txSelect before txRollback");
         }
-        transaction = null;
         return new AMQImpl.Tx.RollbackOk();
     }
 

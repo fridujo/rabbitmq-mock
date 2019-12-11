@@ -582,4 +582,32 @@ class ChannelTest {
         }
     }
 
+    @Test
+    void commit_or_rollback_can_be_called_multiple_times_after_a_single_select() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                channel.txSelect();
+                String queue = channel.queueDeclare().getQueue();
+                channel.txRollback();
+                channel.txCommit();
+
+                channel.basicPublish("", queue, null, "first message".getBytes());
+                assertThat(channel.basicGet(queue, true)).isNull();
+                channel.txCommit();
+                assertThat(channel.basicGet(queue, true)).isNotNull();
+
+                channel.basicPublish("", queue, null, "second message".getBytes());
+                assertThat(channel.basicGet(queue, true)).isNull();
+                channel.txCommit();
+                assertThat(channel.basicGet(queue, true)).isNotNull();
+                // Channel contained only one message as transactions are cleared after commit
+                assertThat(channel.basicGet(queue, true)).isNull(); 
+
+                channel.basicPublish("", queue, null, "third message".getBytes());
+                assertThat(channel.basicGet(queue, true)).isNull();
+                channel.txRollback();
+                assertThat(channel.basicGet(queue, true)).isNull();
+            }
+        }
+    }
 }
