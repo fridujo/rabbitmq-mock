@@ -118,7 +118,7 @@ class AmqpConnectorsTest {
 
         List<ReadResult> probeResult =
             JavaConverters.seqAsJavaListConverter(
-                result.second().toStrict(Duration.create(3, TimeUnit.SECONDS)))
+                result.second().toStrict(Duration.create(5, TimeUnit.SECONDS)))
                 .asJava();
         assertEquals(
             probeResult.stream().map(s -> s.bytes().utf8String()).collect(Collectors.toList()), input);
