@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -169,6 +170,17 @@ class ChannelTest {
     }
 
     @Test
+    void exchangeDelete_does_nothing_when_not_existing() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                assertThat(channel.exchangeDelete(UUID.randomUUID().toString())).isNotNull();
+                assertThat(channel.exchangeDelete(UUID.randomUUID().toString(), false)).isNotNull();
+                channel.exchangeDeleteNoWait(UUID.randomUUID().toString(), false);
+            }
+        }
+    }
+
+    @Test
     void exchangeBind_binds_two_exchanges() throws IOException, TimeoutException {
         try (Connection conn = new MockConnectionFactory().newConnection()) {
             try (Channel channel = conn.createChannel()) {
@@ -288,6 +300,17 @@ class ChannelTest {
                 channel.queueDeleteNoWait("", false, false);
                 assertThatExceptionOfType(IOException.class)
                     .isThrownBy(() -> channel.queueDeclarePassive(""));
+            }
+        }
+    }
+
+    @Test
+    void queueDelete_does_nothing_when_not_existing() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                assertThat(channel.queueDelete(UUID.randomUUID().toString())).isNotNull();
+                assertThat(channel.queueDelete(UUID.randomUUID().toString(), false, false)).isNotNull();
+                channel.queueDeleteNoWait(UUID.randomUUID().toString(), false, false);
             }
         }
     }
@@ -601,7 +624,7 @@ class ChannelTest {
                 channel.txCommit();
                 assertThat(channel.basicGet(queue, true)).isNotNull();
                 // Channel contained only one message as transactions are cleared after commit
-                assertThat(channel.basicGet(queue, true)).isNull(); 
+                assertThat(channel.basicGet(queue, true)).isNull();
 
                 channel.basicPublish("", queue, null, "third message".getBytes());
                 assertThat(channel.basicGet(queue, true)).isNull();
