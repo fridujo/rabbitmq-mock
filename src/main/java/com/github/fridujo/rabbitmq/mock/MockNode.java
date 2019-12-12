@@ -86,9 +86,9 @@ public class MockNode implements ReceiverRegistry, TransactionalOperations {
     }
 
     public AMQP.Queue.DeleteOk queueDelete(String queueName, boolean ifUnused, boolean ifEmpty) {
-        MockQueue queue = queues.remove(queueName);
-        queue.notifyDeleted();
-        return new AMQImpl.Queue.DeleteOk(queue != null ? queue.messageCount() : 0);
+        Optional<MockQueue> queue = Optional.ofNullable(queues.remove(queueName));
+        queue.ifPresent(MockQueue::notifyDeleted);
+        return new AMQImpl.Queue.DeleteOk(queue.map(MockQueue::messageCount).orElse(0));
     }
 
     public AMQP.Queue.BindOk queueBind(String queueName, String exchangeName, String routingKey, Map<String, Object> arguments) {
