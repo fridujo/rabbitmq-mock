@@ -670,6 +670,7 @@ class ChannelTest {
                 channel.basicPublish("", replyTo, null, "pong".getBytes());
 
                 CountDownLatch latch = new CountDownLatch(1);
+                AtomicBoolean cancelled = new AtomicBoolean();
                 AtomicReference<String> reply = new AtomicReference<String>();
                 String consumerTag = channel.basicConsume("amq.rabbitmq.reply-to", true, new DefaultConsumer(channel) {
                     @Override
@@ -683,12 +684,14 @@ class ChannelTest {
 
                     @Override
                     public void handleCancelOk(String consumerTag) {
+                        cancelled.set(true);
                     }
                 });
 
                 latch.await(1, TimeUnit.SECONDS);
                 channel.basicCancel(consumerTag);
-                
+
+                assertThat(cancelled).isTrue();
                 assertThat(reply.get()).isEqualTo("pong");
             }
         }
