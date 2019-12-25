@@ -376,6 +376,14 @@ public class MockChannel implements Channel {
 
     @Override
     public GetResponse basicGet(String queue, boolean autoAck) {
+        if (DIRECT_REPLY_TO_QUEUE.equals(queue)) {
+            queue = directReplyToQueue;
+
+            if (!autoAck) {
+                throw new IllegalStateException("direct reply-to requires autoAck");
+            }
+        }
+        
         GetResponse getResponse = node.basicGet(lastGeneratedIfEmpty(queue), autoAck, this::nextDeliveryTag);
         if (getResponse != null) {
             metricsCollectorWrapper.consumedMessage(this, getResponse.getEnvelope().getDeliveryTag(), autoAck);

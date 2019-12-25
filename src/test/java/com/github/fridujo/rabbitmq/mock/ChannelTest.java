@@ -8,11 +8,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
@@ -633,4 +631,68 @@ class ChannelTest {
             }
         }
     }
+
+    @Test
+    void directReplyTo_basicPublish_basicGet() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+
+                String queue = channel.queueDeclare().getQueue();
+
+                channel.basicPublish("", queue, new AMQP.BasicProperties.Builder().replyTo("amq.rabbitmq.reply-to").build(), "ping".getBytes());
+                assertThat(channel.messageCount(queue)).isEqualTo(1);
+
+                final GetResponse basicGet = channel.basicGet(queue, true);
+                final String replyTo = basicGet.getProps().getReplyTo();
+                assertThat(replyTo).startsWith("amq.gen-");
+
+                channel.basicPublish("", replyTo, null, "pong".getBytes());
+
+                final GetResponse reply = channel.basicGet("amq.rabbitmq.reply-to", true);
+                assertThat(new String(reply.getBody())).isEqualTo("pong");
+            }
+        }
+    }
+    @Test
+    void directReplyTo_basicPublish_basicConsume() throws IOException, TimeoutException, InterruptedException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+
+                String queue = channel.queueDeclare().getQueue();
+
+                channel.basicPublish("", queue, new AMQP.BasicProperties.Builder().replyTo("amq.rabbitmq.reply-to").build(), "ping".getBytes());
+                assertThat(channel.messageCount(queue)).isEqualTo(1);
+
+                final GetResponse basicGet = channel.basicGet(queue, true);
+                final String replyTo = basicGet.getProps().getReplyTo();
+                assertThat(replyTo).startsWith("amq.gen-");
+
+                channel.basicPublish("", replyTo, null, "pong".getBytes());
+
+                CountDownLatch latch = new CountDownLatch(1);
+                AtomicReference<String> reply = new AtomicReference<String>();
+                String consumerTag = channel.basicConsume("amq.rabbitmq.reply-to", true, new DefaultConsumer(channel) {
+                    @Override
+                    public void handleDelivery(String consumerTag,
+                                               Envelope envelope,
+                                               AMQP.BasicProperties properties,
+                                               byte[] body) {
+                        assertThat(reply.compareAndSet(null, new String(body))).isTrue();
+                        latch.countDown();
+                    }
+
+                    @Override
+                    public void handleCancelOk(String consumerTag) {
+                    }
+                });
+
+                latch.await(1, TimeUnit.SECONDS);
+                channel.basicCancel(consumerTag);
+                
+                assertThat(reply.get()).isEqualTo("pong");
+            }
+        }
+    }
+    
+    
 }
