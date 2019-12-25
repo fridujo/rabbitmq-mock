@@ -2,6 +2,8 @@ package com.github.fridujo.rabbitmq.mock;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.fail;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -24,6 +26,9 @@ import com.rabbitmq.client.GetResponse;
 import com.rabbitmq.client.ShutdownSignalException;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 
 class ChannelTest {
 
@@ -632,5 +637,114 @@ class ChannelTest {
                 assertThat(channel.basicGet(queue, true)).isNull();
             }
         }
+    }
+
+    @Test
+    void directReplyTo_basicPublish_basicGet() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+
+                String queue = channel.queueDeclare().getQueue();
+
+                channel.basicPublish("", queue, new AMQP.BasicProperties.Builder().replyTo("amq.rabbitmq.reply-to").build(), "ping".getBytes());
+                assertThat(channel.messageCount(queue)).isEqualTo(1);
+
+                final GetResponse basicGet = channel.basicGet(queue, true);
+                final String replyTo = basicGet.getProps().getReplyTo();
+                assertThat(replyTo).startsWith("amq.gen-");
+
+                channel.basicPublish("", replyTo, null, "pong".getBytes());
+
+                final GetResponse reply = channel.basicGet("amq.rabbitmq.reply-to", true);
+                assertThat(new String(reply.getBody())).isEqualTo("pong");
+            }
+        }
+    }
+
+    @Test
+    void directReplyTo_basicPublish_basicConsume() throws IOException, TimeoutException, InterruptedException {
+        final String replyTo;
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+
+                String queue = channel.queueDeclare().getQueue();
+
+                channel.basicPublish("", queue, new AMQP.BasicProperties.Builder().replyTo("amq.rabbitmq.reply-to").build(), "ping".getBytes());
+                assertThat(channel.messageCount(queue)).isEqualTo(1);
+
+                final GetResponse basicGet = channel.basicGet(queue, true);
+                replyTo = basicGet.getProps().getReplyTo();
+                assertThat(replyTo).startsWith("amq.gen-");
+
+                channel.basicPublish("", replyTo, null, "pong".getBytes());
+
+                CountDownLatch latch = new CountDownLatch(1);
+                AtomicBoolean cancelled = new AtomicBoolean();
+                AtomicReference<String> reply = new AtomicReference<>();
+                String consumerTag = channel.basicConsume("amq.rabbitmq.reply-to", true, new DefaultConsumer(channel) {
+                    @Override
+                    public void handleDelivery(String consumerTag,
+                                               Envelope envelope,
+                                               AMQP.BasicProperties properties,
+                                               byte[] body) {
+                        assertThat(reply.compareAndSet(null, new String(body))).isTrue();
+                        latch.countDown();
+                    }
+
+                    @Override
+                    public void handleCancelOk(String consumerTag) {
+                        cancelled.set(true);
+                    }
+                });
+
+                latch.await(1, TimeUnit.SECONDS);
+                channel.basicCancel(consumerTag);
+
+                assertThat(cancelled).isTrue();
+                assertThat(reply.get()).isEqualTo("pong");
+            }
+        }
+
+        // assert that internal queue is removed
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                assertThatThrownBy(() -> channel.queueDeclarePassive(replyTo)).isInstanceOf(IOException.class);
+            }
+        }
+    }
+
+    @Test
+    void directReplyTo_basicConsume_noAutoAck() {
+        assertThatThrownBy(() -> {
+            try (Connection conn = new MockConnectionFactory().newConnection()) {
+                try (Channel channel = conn.createChannel()) {
+                    channel.basicConsume("amq.rabbitmq.reply-to", false, new DefaultConsumer(channel) {
+                        @Override
+                        public void handleDelivery(String consumerTag,
+                                                   Envelope envelope,
+                                                   AMQP.BasicProperties properties,
+                                                   byte[] body) {
+                            fail("not implemented");
+                        }
+
+                        @Override
+                        public void handleCancelOk(String consumerTag) {
+                            fail("not implemented");
+                        }
+                    });
+                }
+            }
+        }).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void directReplyTo_basicGet_noAutoAck() {
+        assertThatThrownBy(() -> {
+            try (Connection conn = new MockConnectionFactory().newConnection()) {
+                try (Channel channel = conn.createChannel()) {
+                    channel.basicGet("amq.rabbitmq.reply-to", false);
+                }
+            }
+        }).isInstanceOf(IllegalStateException.class);
     }
 }

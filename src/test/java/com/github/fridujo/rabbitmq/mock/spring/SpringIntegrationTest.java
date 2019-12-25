@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,7 @@ import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.TopicExchange;
+import org.springframework.amqp.rabbit.AsyncRabbitTemplate;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
@@ -80,7 +82,35 @@ class SpringIntegrationTest {
             }
         }
     }
+    
+    @Test
+    void reply_direct_to() throws ExecutionException, InterruptedException {
+        String messageBody = "Hello world!";
+        try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(AmqpConfiguration.class)) {
+            RabbitTemplate rabbitTemplate = queueAndExchangeSetup(context);
 
+            // using AsyncRabbitTemplate to avoid automatic fallback to temporary queue 
+            AsyncRabbitTemplate asyncRabbitTemplate = new AsyncRabbitTemplate(rabbitTemplate);
+            
+            Receiver receiver = new Receiver();
+            SimpleMessageListenerContainer container = new SimpleMessageListenerContainer();
+            container.setConnectionFactory(context.getBean(ConnectionFactory.class));
+            container.setQueueNames(QUEUE_NAME);
+            container.setMessageListener(new MessageListenerAdapter(receiver, "receiveMessageAndReply"));
+            try {
+                container.start();
+                asyncRabbitTemplate.start();
+
+                AsyncRabbitTemplate.RabbitConverterFuture<Object> result = asyncRabbitTemplate.convertSendAndReceive(EXCHANGE_NAME, "test.key2", messageBody);
+                
+                assertThat(result.get()).isEqualTo(new StringBuilder(messageBody).reverse().toString());
+                assertThat(receiver.getMessages()).containsExactly(messageBody);
+            } finally {
+                container.stop();
+                asyncRabbitTemplate.stop();
+            }
+        }
+    }
     private RabbitTemplate queueAndExchangeSetup(BeanFactory context) {
         RabbitAdmin rabbitAdmin = context.getBean(RabbitAdmin.class);
 
@@ -147,6 +177,11 @@ class SpringIntegrationTest {
 
         public void receiveMessage(String message) {
             this.messages.add(message);
+        }
+        
+        public String receiveMessageAndReply(String message) {
+            this.messages.add(message);
+            return new StringBuilder(message).reverse().toString();
         }
 
         List<String> getMessages() {

@@ -35,6 +35,7 @@ import com.rabbitmq.client.ShutdownSignalException;
 import com.rabbitmq.client.impl.AMQImpl;
 
 public class MockChannel implements Channel {
+    public static final String DIRECT_REPLY_TO_QUEUE = "amq.rabbitmq.reply-to";
     private static final Logger LOGGER = LoggerFactory.getLogger(MockChannel.class);
     private final int channelNumber;
     private final MockNode node;
@@ -48,6 +49,7 @@ public class MockChannel implements Channel {
         22);
     private final Set<ConfirmListener> confirmListeners = new HashSet<>();
 
+    private final String directReplyToQueue;
     private String lastGeneratedQueueName;
     private Transaction transaction;
     private boolean confirmMode = false;
@@ -58,6 +60,12 @@ public class MockChannel implements Channel {
         this.node = node;
         this.mockConnection = mockConnection;
         this.metricsCollectorWrapper = metricsCollectorWrapper;
+        
+        this.directReplyToQueue = 
+            node
+                .queueDeclare(generateIfEmpty(""),false, true, true, Collections.emptyMap(), this)
+                .getQueue();
+
         metricsCollectorWrapper.newChannel(this);
     }
 
@@ -173,6 +181,9 @@ public class MockChannel implements Channel {
 
     @Override
     public void basicPublish(String exchange, String routingKey, boolean mandatory, boolean immediate, AMQP.BasicProperties props, byte[] body) {
+        if (props != null && DIRECT_REPLY_TO_QUEUE.equals(props.getReplyTo())) {
+            props = props.builder().replyTo(directReplyToQueue).build();
+        }
         getTransactionOrNode().basicPublish(exchange, routingKey, mandatory, immediate, nullToEmpty(props), body);
         metricsCollectorWrapper.basicPublish(this);
         if (confirmMode) {
@@ -305,6 +316,9 @@ public class MockChannel implements Channel {
 
     @Override
     public AMQP.Queue.DeclareOk queueDeclarePassive(String queueName) throws IOException {
+        if (DIRECT_REPLY_TO_QUEUE.equals(queueName)) {
+            return new AMQImpl.Queue.DeclareOk(queueName, 0, 0);
+        }
         String definitiveQueueName = lastGeneratedIfEmpty(queueName);
         Optional<MockQueue> queue = node.getQueue(definitiveQueueName);
         if (!queue.isPresent()) {
@@ -360,6 +374,14 @@ public class MockChannel implements Channel {
 
     @Override
     public GetResponse basicGet(String queue, boolean autoAck) {
+        if (DIRECT_REPLY_TO_QUEUE.equals(queue)) {
+            queue = directReplyToQueue;
+
+            if (!autoAck) {
+                throw new IllegalStateException("direct reply-to requires autoAck");
+            }
+        }
+        
         GetResponse getResponse = node.basicGet(lastGeneratedIfEmpty(queue), autoAck, this::nextDeliveryTag);
         if (getResponse != null) {
             metricsCollectorWrapper.consumedMessage(this, getResponse.getEnvelope().getDeliveryTag(), autoAck);
@@ -467,6 +489,13 @@ public class MockChannel implements Channel {
 
     @Override
     public String basicConsume(String queue, boolean autoAck, String consumerTag, boolean noLocal, boolean exclusive, Map<String, Object> arguments, Consumer callback) {
+        if (DIRECT_REPLY_TO_QUEUE.equals(queue)) {
+            queue = directReplyToQueue;
+            
+            if (!autoAck) {
+                throw new IllegalStateException("direct reply-to requires autoAck");
+            }
+        }
         String serverConsumerTag = node.basicConsume(lastGeneratedIfEmpty(queue), autoAck, consumerTag, noLocal, exclusive, nullToEmpty(arguments), callback, this::nextDeliveryTag, mockConnection);
         metricsCollectorWrapper.basicConsume(this, serverConsumerTag, autoAck);
         return serverConsumerTag;
