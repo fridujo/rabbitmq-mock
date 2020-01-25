@@ -14,7 +14,7 @@ Better, provide some code, inlined in the issue or in a dedicated repository sho
 
 ### Suggesting a new Feature
 The sole purpose of this project is to ease the life of Java-ish (understand, any language on the JVM) developpers working with RabbitMQ.  
-So start to explain how this feature will improve the developper experience (reducing boiler-code, speeding-up feedback loop, etc.).  
+So start to explain how this feature will improve the developer experience (reducing boiler-code, speeding-up feedback loop, etc.).  
 If there is a new API involved, please submit your idea about it, whatever language (JVM based maybe ?).
 
 ### Pull Requests
