@@ -8,6 +8,7 @@ import static org.assertj.core.api.Assertions.fail;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Collections;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
@@ -24,10 +25,20 @@ import com.rabbitmq.client.DefaultConsumer;
 import com.rabbitmq.client.Envelope;
 import com.rabbitmq.client.GetResponse;
 import com.rabbitmq.client.ShutdownSignalException;
+import com.rabbitmq.client.MessageProperties;
+import com.rabbitmq.client.RpcClient;
+import com.rabbitmq.client.RpcClientParams;
+import com.rabbitmq.client.UnroutableRpcRequestException;
+import com.rabbitmq.client.ReturnCallback;
+import com.rabbitmq.client.ReturnListener;
+import com.rabbitmq.client.Return;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 class ChannelTest {
@@ -712,6 +723,126 @@ class ChannelTest {
             }
         }
     }
+
+    @ParameterizedTest(name = "publish to {0} should return replyCode {1}")
+    @CsvSource({
+        "existingQueue, -1",
+        "unexistingQueue, 312",
+    })
+    void mandatory_publish_with_default_exchange(String routingKey, int expectedReplyCode) throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+
+                channel.queueDeclare("existingQueue", false, false, false, Collections.emptyMap()).getQueue();
+                AtomicInteger replyCodeHolder = new AtomicInteger(-1);
+                ReturnListener returnListener = (replyCode, replyText, exchange, routingKey1, properties, body) -> replyCodeHolder.set(replyCode);
+                channel.addReturnListener(returnListener);
+                channel.basicPublish("", routingKey, true, MessageProperties.BASIC, "msg".getBytes());
+                assertThat(replyCodeHolder.get()).isEqualTo(expectedReplyCode);
+            }
+        }
+    }
+
+
+    @ParameterizedTest(name = "publish to {0} should return replyCode {1}")
+    @CsvSource({
+        "boundRoutingKey, -1",
+        "unboundRoutingKey, 312",
+    })
+    void mandatory_publish_with_direct_exchange(String routingKey, int expectedReplyCode) throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                channel.exchangeDeclare("test", "direct");
+                channel.queueDeclare("existingQueue", false, false, false, Collections.emptyMap()).getQueue();
+                channel.queueBind("existingQueue","test", "boundRoutingKey");
+                AtomicInteger replyCodeHolder = new AtomicInteger(-1);
+                ReturnCallback returnListener = r -> replyCodeHolder.set(r.getReplyCode());
+                channel.addReturnListener(returnListener);
+                channel.basicPublish("test", routingKey, true, MessageProperties.BASIC, "msg".getBytes());
+                assertThat(replyCodeHolder.get()).isEqualTo(expectedReplyCode);
+            }
+        }
+    }
+
+    private static class TrackingCallback implements ReturnCallback {
+
+        int invocationCount;
+
+        @Override
+        public void handle(Return returnMessage) {
+            invocationCount++;
+        }
+    }
+
+    @Test
+    void mandatory_publish_with_multiple_listeners() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                TrackingCallback firstCallbackThatIsRegistedTwice = new TrackingCallback();
+                TrackingCallback secondCallbackThatWillBeRemoved = new TrackingCallback();
+                TrackingCallback thirdCallback = new TrackingCallback();
+                channel.addReturnListener(firstCallbackThatIsRegistedTwice);
+                channel.addReturnListener(firstCallbackThatIsRegistedTwice);
+                channel.addReturnListener(r -> {throw new RuntimeException("Listener throwing exception");});
+                ReturnListener returnListener = channel.addReturnListener(secondCallbackThatWillBeRemoved);
+                channel.addReturnListener(thirdCallback);
+                channel.removeReturnListener(returnListener);
+                channel.basicPublish("", "unexisting", true, MessageProperties.BASIC, "msg".getBytes());
+                assertThat(firstCallbackThatIsRegistedTwice.invocationCount).isEqualTo(1);
+                assertThat(secondCallbackThatWillBeRemoved.invocationCount).isEqualTo(0);
+                assertThat(thirdCallback.invocationCount).isEqualTo(1);
+            }
+        }
+    }
+
+    @Test
+    void rpcClient() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+
+                String queue = channel.queueDeclare().getQueue();
+                channel.basicConsume(queue, new DefaultConsumer(channel) {
+                    @Override
+                    public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {
+                        channel.basicPublish(
+                            "",
+                            properties.getReplyTo(),
+                            MessageProperties.BASIC.builder().correlationId(properties.getCorrelationId()).build(), "pong".getBytes()
+                        );
+                    }
+                });
+
+                RpcClientParams params = new RpcClientParams();
+                params.channel(channel);
+                params.exchange("");
+                params.routingKey(queue);
+                RpcClient client = new RpcClient(params);
+                RpcClient.Response response = client.responseCall("ping".getBytes());
+                assertThat(response.getBody()).isEqualTo("pong".getBytes());
+            }
+        }
+    }
+
+    @Test
+    void rpcClientSupportsMandatory() throws IOException, TimeoutException {
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            try (Channel channel = conn.createChannel()) {
+                RpcClientParams params = new RpcClientParams();
+                params.channel(channel);
+                params.exchange("");
+                params.routingKey("unexistingQueue");
+                params.useMandatory(true);
+                RpcClient client = new RpcClient(params);
+                try {
+                    client.responseCall("ping".getBytes());
+                    fail("Expected exception");
+                } catch (UnroutableRpcRequestException e) {
+                    assertThat(e.getReturnMessage().getReplyText()).isEqualTo("No route");
+                }
+            }
+        }
+    }
+
 
     @Test
     void directReplyTo_basicConsume_noAutoAck() {

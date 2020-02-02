@@ -38,8 +38,9 @@ public class Transaction implements TransactionalOperations {
     }
 
     @Override
-    public void basicPublish(String exchange, String routingKey, boolean mandatory, boolean immediate, AMQP.BasicProperties props, byte[] body) {
+    public boolean basicPublish(String exchange, String routingKey, boolean mandatory, boolean immediate, AMQP.BasicProperties props, byte[] body) {
         publishedMessages.add(new PublishedMessage(exchange, routingKey, mandatory, immediate, props, body));
+        return true;//behavior is not defined in spec
     }
 
     @Override

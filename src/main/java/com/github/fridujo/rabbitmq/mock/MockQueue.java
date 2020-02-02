@@ -128,10 +128,10 @@ public class MockQueue implements Receiver {
         return false;
     }
 
-    public void publish(String exchangeName, String routingKey, AMQP.BasicProperties props, byte[] body) {
+    public boolean publish(String exchangeName, String routingKey, AMQP.BasicProperties props, byte[] body) {
         boolean queueLengthLimitReached = queueLengthLimitReached() || queueLengthBytesLimitReached();
         if (queueLengthLimitReached && arguments.overflow() == AmqArguments.Overflow.REJECT_PUBLISH) {
-            return;
+            return true;
         }
         Message message = new Message(
             messageSequence.incrementAndGet(),
@@ -150,6 +150,7 @@ public class MockQueue implements Receiver {
         if (queueLengthLimitReached) {
             deadLetterWithReason(messages.poll(), DeadLettering.ReasonType.MAX_LEN);
         }
+        return true;
     }
 
     @Override

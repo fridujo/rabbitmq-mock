@@ -8,7 +8,10 @@ import com.rabbitmq.client.AMQP;
 public interface Receiver {
     String X_MATCH_KEY = "x-match";
 
-    void publish(String exchangeName, String routingKey, AMQP.BasicProperties props, byte[] body);
+    /**
+     * @return true if message got routed, false otherwise
+     */
+    boolean publish(String exchangeName, String routingKey, AMQP.BasicProperties props, byte[] body);
 
     ReceiverPointer pointer();
 }

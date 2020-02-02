@@ -4,7 +4,7 @@ import com.rabbitmq.client.AMQP;
 
 public interface TransactionalOperations {
 
-    void basicPublish(String exchange, String routingKey, boolean mandatory, boolean immediate, AMQP.BasicProperties props, byte[] body);
+    boolean basicPublish(String exchange, String routingKey, boolean mandatory, boolean immediate, AMQP.BasicProperties props, byte[] body);
 
     void basicReject(long deliveryTag, boolean requeue);
 

@@ -32,6 +32,7 @@ import com.rabbitmq.client.ReturnCallback;
 import com.rabbitmq.client.ReturnListener;
 import com.rabbitmq.client.ShutdownListener;
 import com.rabbitmq.client.ShutdownSignalException;
+import com.rabbitmq.client.Return;
 import com.rabbitmq.client.impl.AMQImpl;
 
 public class MockChannel implements Channel {
@@ -48,6 +49,7 @@ public class MockChannel implements Channel {
         "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
         22);
     private final Set<ConfirmListener> confirmListeners = new HashSet<>();
+    private final Set<ReturnListener> returnListeners = new HashSet<>();
 
     private final String directReplyToQueue;
     private String lastGeneratedQueueName;
@@ -103,22 +105,24 @@ public class MockChannel implements Channel {
 
     @Override
     public void addReturnListener(ReturnListener listener) {
-        throw new UnsupportedOperationException();
+        returnListeners.add(listener);
     }
 
     @Override
     public ReturnListener addReturnListener(ReturnCallback returnCallback) {
-        throw new UnsupportedOperationException();
+        ReturnListener l = new ReturnListenerAdapter(returnCallback);
+        returnListeners.add(l);
+        return l;
     }
 
     @Override
     public boolean removeReturnListener(ReturnListener listener) {
-        throw new UnsupportedOperationException();
+        return returnListeners.remove(listener);
     }
 
     @Override
     public void clearReturnListeners() {
-        throw new UnsupportedOperationException();
+        returnListeners.clear();
     }
 
     @Override
@@ -176,7 +180,7 @@ public class MockChannel implements Channel {
 
     @Override
     public void basicPublish(String exchange, String routingKey, boolean mandatory, AMQP.BasicProperties props, byte[] body) {
-        basicPublish(exchange, routingKey, false, false, props, body);
+        basicPublish(exchange, routingKey, mandatory, false, props, body);
     }
 
     @Override
@@ -184,7 +188,16 @@ public class MockChannel implements Channel {
         if (props != null && DIRECT_REPLY_TO_QUEUE.equals(props.getReplyTo())) {
             props = props.builder().replyTo(directReplyToQueue).build();
         }
-        getTransactionOrNode().basicPublish(exchange, routingKey, mandatory, immediate, nullToEmpty(props), body);
+        boolean delivered = getTransactionOrNode().basicPublish(exchange, routingKey, mandatory, immediate, nullToEmpty(props), body);
+        if (!delivered && mandatory) {
+            for (ReturnListener returnListener : returnListeners) {
+                try {
+                    returnListener.handleReturn(312, "No route", exchange, routingKey, props, body);
+                } catch (IOException | RuntimeException e) {
+                    LOGGER.warn("ConfirmListener threw an exception " + returnListener, e);
+                }
+            }
+        }
         metricsCollectorWrapper.basicPublish(this);
         if (confirmMode) {
             safelyInvokeConfirmListeners();
@@ -698,5 +711,31 @@ public class MockChannel implements Channel {
 
     public MetricsCollectorWrapper getMetricsCollector() {
         return metricsCollectorWrapper;
+    }
+
+    private static class ReturnListenerAdapter implements ReturnListener {
+        private final ReturnCallback callback;
+
+        private ReturnListenerAdapter(ReturnCallback callback) {
+            this.callback = callback;
+        }
+
+        @Override
+        public void handleReturn(int replyCode, String replyText, String exchange, String routingKey, AMQP.BasicProperties properties, byte[] body) {
+            callback.handle(new Return(replyCode, replyText, exchange, routingKey, properties, body));
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            ReturnListenerAdapter that = (ReturnListenerAdapter) o;
+            return callback.equals(that.callback);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(callback);
+        }
     }
 }
