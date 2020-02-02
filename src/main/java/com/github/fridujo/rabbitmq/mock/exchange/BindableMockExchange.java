@@ -43,7 +43,7 @@ public abstract class BindableMockExchange implements MockExchange {
     }
 
     @Override
-    public void publish(String previousExchangeName, String routingKey, AMQP.BasicProperties props, byte[] body) {
+    public boolean publish(String previousExchangeName, String routingKey, AMQP.BasicProperties props, byte[] body) {
         Set<Receiver> matchingReceivers = matchingReceivers(routingKey, props)
             .map(receiverRegistry::getReceiver)
             .filter(Optional::isPresent)
@@ -51,16 +51,17 @@ public abstract class BindableMockExchange implements MockExchange {
             .collect(Collectors.toSet());
 
         if (matchingReceivers.isEmpty()) {
-            getAlternateExchange().ifPresent(e -> {
+            return getAlternateExchange().map(e -> {
                 LOGGER.debug(localized("message to alternate " + e));
-                e.publish(name, routingKey, props, body);
-            });
+                return e.publish(name, routingKey, props, body);
+            }).orElse(false);
         } else {
             matchingReceivers
                 .forEach(e -> {
                     LOGGER.debug(localized("message to " + e));
                     e.publish(name, routingKey, props, body);
                 });
+            return true;
         }
     }
 

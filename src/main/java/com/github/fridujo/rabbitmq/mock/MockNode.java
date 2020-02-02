@@ -32,9 +32,9 @@ public class MockNode implements ReceiverRegistry, TransactionalOperations {
         exchanges.put(MockDefaultExchange.NAME, defaultExchange);
     }
 
-    public void basicPublish(String exchangeName, String routingKey, boolean mandatory, boolean immediate, AMQP.BasicProperties props, byte[] body) {
+    public boolean basicPublish(String exchangeName, String routingKey, boolean mandatory, boolean immediate, AMQP.BasicProperties props, byte[] body) {
         MockExchange exchange = getExchangeUnchecked(exchangeName);
-        exchange.publish(null, routingKey, props, body);
+        return exchange.publish(null, routingKey, props, body);
     }
 
     public String basicConsume(String queueName, boolean autoAck, String consumerTag, boolean noLocal, boolean exclusive, Map<String, Object> arguments, Consumer callback, Supplier<Long> deliveryTagSupplier, MockConnection mockConnection) {

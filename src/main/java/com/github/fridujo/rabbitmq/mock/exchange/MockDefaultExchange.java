@@ -19,8 +19,8 @@ public class MockDefaultExchange implements MockExchange {
     }
 
     @Override
-    public void publish(String previousExchangeName, String routingKey, AMQP.BasicProperties props, byte[] body) {
-        node.getQueue(routingKey).ifPresent(q -> q.publish(NAME, routingKey, props, body));
+    public boolean publish(String previousExchangeName, String routingKey, AMQP.BasicProperties props, byte[] body) {
+        return node.getQueue(routingKey).map(q -> q.publish(NAME, routingKey, props, body)).orElse(false);
     }
 
     @Override

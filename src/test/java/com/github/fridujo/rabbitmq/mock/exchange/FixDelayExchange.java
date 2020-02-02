@@ -20,11 +20,11 @@ public class FixDelayExchange extends MockDirectExchange {
     }
 
     @Override
-    public void publish(String previousExchangeName, String routingKey, AMQP.BasicProperties props, byte[] body) {
+    public boolean publish(String previousExchangeName, String routingKey, AMQP.BasicProperties props, byte[] body) {
         try {
             TimeUnit.SECONDS.sleep(1);
         } catch (InterruptedException e) {
         }
-        super.publish(previousExchangeName, routingKey, props, body);
+        return super.publish(previousExchangeName, routingKey, props, body);
     }
 }
