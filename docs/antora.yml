@@ -1,6 +1,6 @@
 name: rabbitmq-mock
 title: RabbitMQ-Mock
-version: 1.0.14-SNAPSHOT
+version: 1.0.14
 
 nav:
 - modules/ROOT/nav.adoc
