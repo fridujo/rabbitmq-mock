@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.BindingBuilder;
@@ -39,15 +41,17 @@ class SpringIntegrationTest {
 
     @Test
     void basic_get_case() {
-        String messageBody = "Hello world!";
+        List<String> messageBodies = Stream.generate(() -> UUID.randomUUID().toString()).limit(10).collect(Collectors.toList());
         try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(AmqpConfiguration.class)) {
             RabbitTemplate rabbitTemplate = queueAndExchangeSetup(context);
-            rabbitTemplate.convertAndSend(EXCHANGE_NAME, "test.key1", messageBody);
+            messageBodies.forEach(messageBody -> rabbitTemplate.convertAndSend(EXCHANGE_NAME, "test.key1", messageBody));
 
-            Message message = rabbitTemplate.receive(QUEUE_NAME);
+            for (String expectedMessageBody : messageBodies) {
+                Message message = rabbitTemplate.receive(QUEUE_NAME);
 
-            assertThat(message).isNotNull();
-            assertThat(message.getBody()).isEqualTo(messageBody.getBytes());
+                assertThat(message).isNotNull();
+                assertThat(message.getBody()).isEqualTo(expectedMessageBody.getBytes());
+            }
         }
     }
 
