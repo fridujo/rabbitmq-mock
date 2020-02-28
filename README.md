@@ -5,6 +5,7 @@
 [![Maven Central](https://img.shields.io/maven-central/v/com.github.fridujo/rabbitmq-mock.svg)](https://search.maven.org/#search|ga|1|a:"rabbitmq-mock")
 [![JitPack](https://jitpack.io/v/fridujo/rabbitmq-mock.svg)](https://jitpack.io/#fridujo/rabbitmq-mock)
 [![License](https://img.shields.io/github/license/fridujo/spring-automocker.svg)](https://opensource.org/licenses/Apache-2.0)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Ffridujo%2Frabbitmq-mock.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Ffridujo%2Frabbitmq-mock?ref=badge_shield)
 
 Mock for RabbitMQ Java [amqp-client](https://github.com/rabbitmq/rabbitmq-java-client).
 
@@ -133,3 +134,7 @@ repositories {
         url "https://oss.sonatype.org/content/repositories/snapshots"
     }
 }
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Ffridujo%2Frabbitmq-mock.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Ffridujo%2Frabbitmq-mock?ref=badge_large)
