@@ -26,7 +26,7 @@
         <logback.version>1.2.3</logback.version>
 
         <skipTests>false</skipTests>
-        <junit.jupiter.version>5.6.0</junit.jupiter.version>
+        <junit.jupiter.version>5.6.1</junit.jupiter.version>
         <pitest-junit5.version>0.12</pitest-junit5.version>
 
         <maven-javadoc-plugin.version>3.2.0</maven-javadoc-plugin.version>
