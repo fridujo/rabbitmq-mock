@@ -242,7 +242,7 @@ public class MockQueue implements Receiver {
         }
     }
 
-    public synchronized void restartDeliveryLoop() {
+    synchronized void restartDeliveryLoop() {
         if (!running.get()) {
             running.set(true);
             executorService.restart();
@@ -250,11 +250,11 @@ public class MockQueue implements Receiver {
         }
     }
 
-    public void notifyDeleted() {
+    void notifyDeleted() {
         close();
     }
 
-    public void close(MockConnection mockConnection) {
+    void close(MockConnection mockConnection) {
         consumersByTag.entrySet().removeIf(e -> {
             final boolean mustCancelConsumer = e.getValue().mockConnection == mockConnection;
             if (mustCancelConsumer) {
@@ -268,7 +268,7 @@ public class MockQueue implements Receiver {
         }
     }
 
-    public void close() {
+    private void close() {
         running.set(false);
         cancelConsumers();
         stopDeliveryLoop();
