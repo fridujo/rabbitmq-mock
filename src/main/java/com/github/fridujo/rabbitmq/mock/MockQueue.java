@@ -6,6 +6,8 @@ import static com.github.fridujo.rabbitmq.mock.tool.Exceptions.runAndTransformEx
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -46,6 +48,7 @@ public class MockQueue implements Receiver {
     private final AtomicInteger messageSequence = new AtomicInteger();
     private final Map<Long, Message> unackedMessagesByDeliveryTag = new LinkedHashMap<>();
     private final AtomicBoolean running = new AtomicBoolean(true);
+    private final Map<String, Set<Long>> unackedDeliveryTagsByConsumerTag = new LinkedHashMap<>();
 
     public MockQueue(String name, AmqArguments arguments, ReceiverRegistry receiverRegistry, MockChannel mockChannel) {
         this.name = name;
@@ -90,6 +93,7 @@ public class MockQueue implements Receiver {
                     ConsumerAndTag nextConsumer = new ArrayList<>(consumersByTag.values()).get(index);
                     long deliveryTag = nextConsumer.deliveryTagSupplier.get();
                     unackedMessagesByDeliveryTag.put(deliveryTag, message);
+                    unackedDeliveryTagsByConsumerTag.computeIfAbsent(nextConsumer.tag, cTag -> new LinkedHashSet<>()).add(deliveryTag);
 
                     Envelope envelope = new Envelope(deliveryTag,
                         message.redelivered,
@@ -100,7 +104,7 @@ public class MockQueue implements Receiver {
                         mockChannel.getMetricsCollector().consumedMessage(mockChannel, deliveryTag, nextConsumer.tag);
                         nextConsumer.consumer.handleDelivery(nextConsumer.tag, envelope, message.props, message.body);
                         if (nextConsumer.autoAck) {
-                            unackedMessagesByDeliveryTag.remove(deliveryTag);
+                            internal_removeFromUnacked(deliveryTag);
                         }
                         delivered = true;
                     } catch (IOException e) {
@@ -194,9 +198,9 @@ public class MockQueue implements Receiver {
 
     public void basicAck(long deliveryTag, boolean multiple) {
         if (multiple) {
-            doWithUnackedUntil(deliveryTag, unackedMessagesByDeliveryTag::remove);
+            doWithUnackedUntil(deliveryTag, this::internal_removeFromUnacked);
         } else {
-            unackedMessagesByDeliveryTag.remove(deliveryTag);
+            internal_removeFromUnacked(deliveryTag);
         }
     }
 
@@ -209,7 +213,7 @@ public class MockQueue implements Receiver {
     }
 
     public void basicReject(long deliveryTag, boolean requeue) {
-        Message nacked = unackedMessagesByDeliveryTag.remove(deliveryTag);
+        Message nacked = internal_removeFromUnacked(deliveryTag);
         if (nacked != null) {
             if (requeue) {
                 messages.offer(nacked.asRedelivered());
@@ -217,6 +221,12 @@ public class MockQueue implements Receiver {
                 deadLetterWithReason(nacked, DeadLettering.ReasonType.REJECTED);
             }
         }
+    }
+
+    private Message internal_removeFromUnacked(long deliveryTag) {
+        Message message = unackedMessagesByDeliveryTag.remove(deliveryTag);
+        unackedDeliveryTagsByConsumerTag.forEach((ctag, deliveryTags) -> deliveryTags.remove(deliveryTag));
+        return message;
     }
 
     private String localized(String message) {
@@ -227,6 +237,8 @@ public class MockQueue implements Receiver {
         if (consumersByTag.containsKey(consumerTag)) {
             Consumer consumer = consumersByTag.remove(consumerTag).consumer;
             consumer.handleCancelOk(consumerTag);
+            new HashSet<>(unackedDeliveryTagsByConsumerTag.computeIfAbsent(consumerTag, k -> Collections.emptySet()))
+                .forEach(deliveryTag -> basicReject(deliveryTag, true));
         }
     }
 
@@ -288,7 +300,7 @@ public class MockQueue implements Receiver {
 
     public void basicRecover(boolean requeue) {
         Set<Long> unackedDeliveryTags = new LinkedHashSet<>(unackedMessagesByDeliveryTag.keySet());
-        unackedDeliveryTags.forEach(unackedDeliveryTag -> messages.offer(unackedMessagesByDeliveryTag.remove(unackedDeliveryTag)));
+        unackedDeliveryTags.forEach(unackedDeliveryTag -> messages.offer(internal_removeFromUnacked(unackedDeliveryTag)));
         consumersByTag.values().forEach(consumerAndTag -> consumerAndTag.consumer.handleRecoverOk(consumerAndTag.tag));
     }
 
