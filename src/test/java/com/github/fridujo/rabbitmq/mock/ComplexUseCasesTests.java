@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -14,6 +15,7 @@ import java.util.concurrent.TimeoutException;
 
 import org.junit.jupiter.api.Test;
 
+import com.github.fridujo.rabbitmq.mock.configuration.QueueDeclarator;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.Channel;
@@ -208,6 +210,51 @@ class ComplexUseCasesTests {
                 assertThat(deliveries.tryAcquire(1, TimeUnit.SECONDS)).as("Messages have been delivered").isTrue();
 
                 assertThat(messages).containsExactly("one", "two", "three");
+            }
+        }
+    }
+
+    @Test
+    void unacked_messages_are_made_available_anew_when_consumer_is_cancelled() throws InterruptedException {
+        try (MockConnection conn = new MockConnectionFactory().newConnection()) {
+            try (MockChannel channel = conn.createChannel()) {
+                String queueName = QueueDeclarator.dynamicQueue().declare(channel).getQueue();
+                Arrays.asList("one", "two", "three")
+                    .forEach(message -> channel.basicPublish("", queueName, null, message.getBytes()));
+
+                Semaphore deliveries = new Semaphore(-2);
+                String consumerTag = channel.basicConsume(queueName, false, Collections.emptyMap(), new DefaultConsumer(channel) {
+                    @Override
+                    public void handleDelivery(String consumerTag,
+                                               Envelope envelope,
+                                               AMQP.BasicProperties properties,
+                                               byte[] body) {
+                        if ("one".equals(new String(body))) {
+                            channel.basicAck(envelope.getDeliveryTag(), false);
+                        }
+                        deliveries.release();
+                    }
+                });
+
+                assertThat(deliveries.tryAcquire(1, TimeUnit.SECONDS)).as("Messages have been delivered").isTrue();
+
+                channel.basicCancel(consumerTag);
+
+                List<String> messages = new ArrayList<>();
+                Semaphore deliveriesRoundTwo = new Semaphore(-1);
+                channel.basicConsume(queueName, false, Collections.emptyMap(), new DefaultConsumer(channel) {
+                    @Override
+                    public void handleDelivery(String consumerTag,
+                                               Envelope envelope,
+                                               AMQP.BasicProperties properties,
+                                               byte[] body) {
+                        messages.add(new String(body));
+                        deliveriesRoundTwo.release();
+                    }
+                });
+
+                assertThat(deliveriesRoundTwo.tryAcquire(1, TimeUnit.SECONDS)).as("Messages have been delivered (round 2)").isTrue();
+                assertThat(messages).containsExactly("two", "three");
             }
         }
     }
