@@ -1,22 +1,25 @@
 package com.github.fridujo.rabbitmq.mock;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.io.IOException;
+import java.time.Duration;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
+
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.DefaultConsumer;
 import com.rabbitmq.client.Envelope;
 import com.rabbitmq.client.GetResponse;
 import com.rabbitmq.client.impl.MicrometerMetricsCollector;
+
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
-
-import java.io.IOException;
-import java.time.Duration;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.function.Supplier;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class MetricsCollectorTest {
 
@@ -139,9 +142,12 @@ public class MetricsCollectorTest {
         SimpleMeterRegistry registry = new SimpleMeterRegistry();
         mockConnectionFactory.setMetricsCollector(new MicrometerMetricsCollector(registry));
 
+        Supplier<Double> publishedMessagesCounter = () -> registry.get("rabbitmq.consumed").counter().count();
+
         try (MockConnection connection = mockConnectionFactory.newConnection();
              Channel channel = connection.createChannel(42)) {
             String queueName = channel.queueDeclare().getQueue();
+            final AtomicBoolean counterIncrementedBeforeHandleDelivery = new AtomicBoolean();
             channel.basicConsume("", new DefaultConsumer(channel) {
                 @Override
                 public void handleDelivery(String consumerTag,
@@ -149,6 +155,7 @@ public class MetricsCollectorTest {
                                            AMQP.BasicProperties properties,
                                            byte[] body) {
                     // Handling the message is not the purpose of this test
+                    counterIncrementedBeforeHandleDelivery.set(publishedMessagesCounter.get() == 1);
                 }
 
                 @Override
@@ -156,8 +163,6 @@ public class MetricsCollectorTest {
                     // Consumer cancellation is not the purpose of this test
                 }
             });
-
-            Supplier<Double> publishedMessagesCounter = () -> registry.get("rabbitmq.consumed").counter().count();
 
             assertThat(publishedMessagesCounter.get()).isEqualTo(0);
 
@@ -169,6 +174,9 @@ public class MetricsCollectorTest {
                 }
             });
             assertThat(publishedMessagesCounter.get()).isEqualTo(1);
+            assertThat(counterIncrementedBeforeHandleDelivery)
+                .as("Counter must be incremented before the call to handleDelivery")
+                .isTrue();
         }
     }
 
