@@ -713,6 +713,10 @@ public class MockChannel implements Channel {
         return metricsCollectorWrapper;
     }
 
+    public Optional<MockQueue> getQueue(String queueName) {
+        return node.getQueue(queueName);
+    }
+
     private static class ReturnListenerAdapter implements ReturnListener {
         private final ReturnCallback callback;
 

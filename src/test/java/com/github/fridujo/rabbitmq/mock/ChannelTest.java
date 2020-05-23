@@ -1,5 +1,6 @@
 package com.github.fridujo.rabbitmq.mock;
 
+import static com.github.fridujo.rabbitmq.mock.configuration.QueueDeclarator.queue;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -7,15 +8,24 @@ import static org.assertj.core.api.Assertions.fail;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+
+import org.junit.jupiter.api.RepeatedTest;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
@@ -24,22 +34,14 @@ import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.DefaultConsumer;
 import com.rabbitmq.client.Envelope;
 import com.rabbitmq.client.GetResponse;
-import com.rabbitmq.client.ShutdownSignalException;
 import com.rabbitmq.client.MessageProperties;
-import com.rabbitmq.client.RpcClient;
-import com.rabbitmq.client.RpcClientParams;
-import com.rabbitmq.client.UnroutableRpcRequestException;
+import com.rabbitmq.client.Return;
 import com.rabbitmq.client.ReturnCallback;
 import com.rabbitmq.client.ReturnListener;
-import com.rabbitmq.client.Return;
-import org.junit.jupiter.api.RepeatedTest;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
-
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
+import com.rabbitmq.client.RpcClient;
+import com.rabbitmq.client.RpcClientParams;
+import com.rabbitmq.client.ShutdownSignalException;
+import com.rabbitmq.client.UnroutableRpcRequestException;
 
 class ChannelTest {
 
@@ -754,7 +756,7 @@ class ChannelTest {
             try (Channel channel = conn.createChannel()) {
                 channel.exchangeDeclare("test", "direct");
                 channel.queueDeclare("existingQueue", false, false, false, Collections.emptyMap()).getQueue();
-                channel.queueBind("existingQueue","test", "boundRoutingKey");
+                channel.queueBind("existingQueue", "test", "boundRoutingKey");
                 AtomicInteger replyCodeHolder = new AtomicInteger(-1);
                 ReturnCallback returnListener = r -> replyCodeHolder.set(r.getReplyCode());
                 channel.addReturnListener(returnListener);
@@ -783,7 +785,9 @@ class ChannelTest {
                 TrackingCallback thirdCallback = new TrackingCallback();
                 channel.addReturnListener(firstCallbackThatIsRegistedTwice);
                 channel.addReturnListener(firstCallbackThatIsRegistedTwice);
-                channel.addReturnListener(r -> {throw new RuntimeException("Listener throwing exception");});
+                channel.addReturnListener(r -> {
+                    throw new RuntimeException("Listener throwing exception");
+                });
                 ReturnListener returnListener = channel.addReturnListener(secondCallbackThatWillBeRemoved);
                 channel.addReturnListener(thirdCallback);
                 channel.removeReturnListener(returnListener);
@@ -877,5 +881,29 @@ class ChannelTest {
                 }
             }
         }).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void getQueue_gives_access_to_MockQueue() {
+        try (MockConnection conn = new MockConnectionFactory().newConnection()) {
+            try (MockChannel channel = conn.createChannel()) {
+                queue("fruits").declare(channel);
+
+                Arrays.asList("orange", "banana")
+                    .forEach(message -> channel.basicPublish("", "fruits", null, message.getBytes()));
+
+                channel.basicGet("fruits", false);
+
+                MockQueue mockQueue = channel.getQueue("fruits").get();
+
+                assertThat(mockQueue.getAvailableMessages())
+                    .extracting(m -> new String(m.body))
+                    .containsOnly("banana");
+
+                assertThat(mockQueue.getUnackedMessages())
+                    .extracting(m -> new String(m.body))
+                    .containsOnly("orange");
+            }
+        }
     }
 }
