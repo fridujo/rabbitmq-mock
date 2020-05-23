@@ -78,7 +78,6 @@ public class MockQueue implements Receiver {
         }
         boolean delivered = false;
 
-
         delivered = deadLetterFirstMessageIfExpired();
 
         if (consumersByTag.size() > 0) {
@@ -98,8 +97,8 @@ public class MockQueue implements Receiver {
                         message.routingKey);
                     try {
                         LOGGER.debug(localized("delivering message to consumer"));
-                        nextConsumer.consumer.handleDelivery(nextConsumer.tag, envelope, message.props, message.body);
                         mockChannel.getMetricsCollector().consumedMessage(mockChannel, deliveryTag, nextConsumer.tag);
+                        nextConsumer.consumer.handleDelivery(nextConsumer.tag, envelope, message.props, message.body);
                         if (nextConsumer.autoAck) {
                             unackedMessagesByDeliveryTag.remove(deliveryTag);
                         }
@@ -232,7 +231,7 @@ public class MockQueue implements Receiver {
     }
 
     public synchronized void restartDeliveryLoop() {
-        if(!running.get()) {
+        if (!running.get()) {
             running.set(true);
             executorService.restart();
             start();
@@ -246,12 +245,12 @@ public class MockQueue implements Receiver {
     public void close(MockConnection mockConnection) {
         consumersByTag.entrySet().removeIf(e -> {
             final boolean mustCancelConsumer = e.getValue().mockConnection == mockConnection;
-            if(mustCancelConsumer) {
+            if (mustCancelConsumer) {
                 cancel(e.getValue());
             }
             return mustCancelConsumer;
         });
-        if(consumersByTag.isEmpty()) {
+        if (consumersByTag.isEmpty()) {
             running.set(false);
             stopDeliveryLoop();
         }
