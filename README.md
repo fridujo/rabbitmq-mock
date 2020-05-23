@@ -69,7 +69,7 @@ Add the following dependency to your **pom.xml**
 <dependency>
     <groupId>com.github.fridujo</groupId>
     <artifactId>rabbitmq-mock</artifactId>
-    <version>1.0.14</version>
+    <version>1.1.0</version>
     <scope>test</scope>
 </dependency>
 ```
@@ -85,7 +85,7 @@ repositories {
 
 dependencies {
 	// ...
-	testCompile('com.github.fridujo:rabbitmq-mock:1.0.14')
+	testCompile('com.github.fridujo:rabbitmq-mock:1.1.0')
 	// ...
 }
 ```
@@ -134,7 +134,7 @@ repositories {
         url "https://oss.sonatype.org/content/repositories/snapshots"
     }
 }
-
+```
 
 ## License
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Ffridujo%2Frabbitmq-mock.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Ffridujo%2Frabbitmq-mock?ref=badge_large)
