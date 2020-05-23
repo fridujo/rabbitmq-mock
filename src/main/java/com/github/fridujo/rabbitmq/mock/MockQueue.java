@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
@@ -389,6 +390,14 @@ public class MockQueue implements Receiver {
                         message.body);
                 }
             );
+    }
+
+    public List<Message> getAvailableMessages() {
+        return new ArrayList<>(messages);
+    }
+
+    public List<Message> getUnackedMessages() {
+        return new ArrayList<>(unackedMessagesByDeliveryTag.values());
     }
 
     static class ConsumerAndTag {
