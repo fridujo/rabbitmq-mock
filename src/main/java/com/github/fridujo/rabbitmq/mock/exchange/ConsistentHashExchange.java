@@ -55,7 +55,7 @@ public class ConsistentHashExchange extends SingleReceiverExchange {
         try {
             return Integer.parseInt(routingKey);
         } catch (NumberFormatException e) {
-            return routingKey.hashCode();
+            throw new IllegalArgumentException("The binding key must be an integer");
         }
     }
 
