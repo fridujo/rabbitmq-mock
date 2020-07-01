@@ -37,7 +37,7 @@ public class MockNode implements ReceiverRegistry, TransactionalOperations {
         return exchange.publish(null, routingKey, props, body);
     }
 
-    public String basicConsume(String queueName, boolean autoAck, String consumerTag, boolean noLocal, boolean exclusive, Map<String, Object> arguments, Consumer callback, Supplier<Long> deliveryTagSupplier, MockConnection mockConnection) {
+    public String basicConsume(String queueName, boolean autoAck, String consumerTag, boolean noLocal, boolean exclusive, Map<String, Object> arguments, Consumer callback, Supplier<Long> deliveryTagSupplier, MockConnection mockConnection, MockChannel mockChannel) {
         final String definitiveConsumerTag;
         if ("".equals(consumerTag)) {
             definitiveConsumerTag = consumerTagGenerator.generate();
@@ -45,7 +45,7 @@ public class MockNode implements ReceiverRegistry, TransactionalOperations {
             definitiveConsumerTag = consumerTag;
         }
 
-        getQueueUnchecked(queueName).basicConsume(definitiveConsumerTag, callback, autoAck, deliveryTagSupplier, mockConnection);
+        getQueueUnchecked(queueName).basicConsume(definitiveConsumerTag, callback, autoAck, deliveryTagSupplier, mockConnection, mockChannel);
 
         return definitiveConsumerTag;
     }
@@ -78,8 +78,8 @@ public class MockNode implements ReceiverRegistry, TransactionalOperations {
         return new AMQImpl.Exchange.UnbindOk();
     }
 
-    public AMQP.Queue.DeclareOk queueDeclare(String queueName, boolean durable, boolean exclusive, boolean autoDelete, Map<String, Object> arguments, MockChannel mockChannel) {
-        queues.putIfAbsent(queueName, new MockQueue(queueName, new AmqArguments(arguments), this, mockChannel));
+    public AMQP.Queue.DeclareOk queueDeclare(String queueName, boolean durable, boolean exclusive, boolean autoDelete, Map<String, Object> arguments) {
+        queues.putIfAbsent(queueName, new MockQueue(queueName, new AmqArguments(arguments), this));
         return new AMQP.Queue.DeclareOk.Builder()
             .queue(queueName)
             .build();

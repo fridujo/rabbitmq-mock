@@ -41,7 +41,6 @@ public class MockQueue implements Receiver {
     private final ReceiverPointer pointer;
     private final AmqArguments arguments;
     private final ReceiverRegistry receiverRegistry;
-    private final MockChannel mockChannel;
     private final Queue<Message> messages;
     private final RestartableExecutorService executorService;
     private final Map<String, ConsumerAndTag> consumersByTag = new LinkedHashMap<>();
@@ -51,12 +50,11 @@ public class MockQueue implements Receiver {
     private final AtomicBoolean running = new AtomicBoolean(true);
     private final Map<String, Set<Long>> unackedDeliveryTagsByConsumerTag = new LinkedHashMap<>();
 
-    public MockQueue(String name, AmqArguments arguments, ReceiverRegistry receiverRegistry, MockChannel mockChannel) {
+    public MockQueue(String name, AmqArguments arguments, ReceiverRegistry receiverRegistry) {
         this.name = name;
         this.pointer = new ReceiverPointer(ReceiverPointer.Type.QUEUE, name);
         this.arguments = arguments;
         this.receiverRegistry = receiverRegistry;
-        this.mockChannel = mockChannel;
 
         messages = new PriorityBlockingQueue<>(11, new MessageComparator(arguments));
         executorService = new RestartableExecutorService(() -> Executors.newFixedThreadPool(1, new NamedThreadFactory(i -> name + "_queue_consuming")));
@@ -102,7 +100,7 @@ public class MockQueue implements Receiver {
                         message.routingKey);
                     try {
                         LOGGER.debug(localized("delivering message to consumer"));
-                        mockChannel.getMetricsCollector().consumedMessage(mockChannel, deliveryTag, nextConsumer.tag);
+                        nextConsumer.mockChannel.getMetricsCollector().consumedMessage(nextConsumer.mockChannel, deliveryTag, nextConsumer.tag);
                         nextConsumer.consumer.handleDelivery(nextConsumer.tag, envelope, message.props, message.body);
                         if (nextConsumer.autoAck) {
                             internal_removeFromUnacked(deliveryTag);
@@ -162,9 +160,9 @@ public class MockQueue implements Receiver {
         return pointer;
     }
 
-    public void basicConsume(String consumerTag, Consumer consumer, boolean autoAck, Supplier<Long> deliveryTagSupplier, MockConnection mockConnection) {
+    public void basicConsume(String consumerTag, Consumer consumer, boolean autoAck, Supplier<Long> deliveryTagSupplier, MockConnection mockConnection, MockChannel mockChannel) {
         LOGGER.debug(localized("registering consumer"));
-        consumersByTag.put(consumerTag, new ConsumerAndTag(consumerTag, consumer, autoAck, deliveryTagSupplier, mockConnection));
+        consumersByTag.put(consumerTag, new ConsumerAndTag(consumerTag, consumer, autoAck, deliveryTagSupplier, mockConnection, mockChannel));
         consumer.handleConsumeOk(consumerTag);
     }
 
@@ -407,13 +405,15 @@ public class MockQueue implements Receiver {
         private final boolean autoAck;
         private final Supplier<Long> deliveryTagSupplier;
         private final MockConnection mockConnection;
+        private final MockChannel mockChannel;
 
-        ConsumerAndTag(String tag, Consumer consumer, boolean autoAck, Supplier<Long> deliveryTagSupplier, MockConnection mockConnection) {
+        ConsumerAndTag(String tag, Consumer consumer, boolean autoAck, Supplier<Long> deliveryTagSupplier, MockConnection mockConnection, MockChannel mockChannel) {
             this.tag = tag;
             this.consumer = consumer;
             this.autoAck = autoAck;
             this.deliveryTagSupplier = deliveryTagSupplier;
             this.mockConnection = mockConnection;
+            this.mockChannel = mockChannel;
         }
     }
 }
