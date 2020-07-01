@@ -2,6 +2,7 @@ package com.github.fridujo.rabbitmq.mock;
 
 import static com.github.fridujo.rabbitmq.mock.tool.Exceptions.runAndEatExceptions;
 import static com.github.fridujo.rabbitmq.mock.tool.Exceptions.runAndTransformExceptions;
+import static java.lang.String.format;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -50,6 +51,7 @@ public class MockQueue implements Receiver {
     private final Map<Long, Message> unackedMessagesByDeliveryTag = new LinkedHashMap<>();
     private final AtomicBoolean running = new AtomicBoolean(true);
     private final Map<String, Set<Long>> unackedDeliveryTagsByConsumerTag = new LinkedHashMap<>();
+    private Optional<MockPolicy> mockPolicy = Optional.empty();
 
     public MockQueue(String name, AmqArguments arguments, ReceiverRegistry receiverRegistry, MockChannel mockChannel) {
         this.name = name;
@@ -377,7 +379,15 @@ public class MockQueue implements Receiver {
     }
 
     private void deadLetterWithReason(Message message, DeadLettering.ReasonType reason) {
+
+        String routingKey = arguments.getDeadLetterRoutingKey()
+            .map(Optional::of)
+            .orElse(mockPolicy.flatMap(MockPolicy::getDeadLetterRoutingKey))
+            .orElse(message.routingKey);
+
         arguments.getDeadLetterExchange()
+            .map(Optional::of)
+            .orElse(mockPolicy.flatMap(MockPolicy::getDeadLetterExchange))
             .flatMap(receiverRegistry::getReceiver)
             .ifPresent(deadLetterExchange -> {
                     LOGGER.debug(localized("dead-lettered to " + deadLetterExchange + ": " + message));
@@ -385,7 +395,7 @@ public class MockQueue implements Receiver {
                     BasicProperties props = event.prependOn(message.props);
                     deadLetterExchange.publish(
                         message.exchangeName,
-                        arguments.getDeadLetterRoutingKey().orElse(message.routingKey),
+                        routingKey,
                         props,
                         message.body);
                 }
@@ -398,6 +408,11 @@ public class MockQueue implements Receiver {
 
     public List<Message> getUnackedMessages() {
         return new ArrayList<>(unackedMessagesByDeliveryTag.values());
+    }
+
+    public void setPolicy(Optional<MockPolicy> mockPolicy) {
+        mockPolicy.ifPresent(p -> LOGGER.info(localized(format("Applied policy %s", p))));
+        this.mockPolicy = mockPolicy;
     }
 
     static class ConsumerAndTag {

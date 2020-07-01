@@ -1,5 +1,14 @@
 package com.github.fridujo.rabbitmq.mock.exchange;
 
+import com.github.fridujo.rabbitmq.mock.AmqArguments;
+import com.github.fridujo.rabbitmq.mock.MockPolicy;
+import com.github.fridujo.rabbitmq.mock.Receiver;
+import com.github.fridujo.rabbitmq.mock.ReceiverPointer;
+import com.github.fridujo.rabbitmq.mock.ReceiverRegistry;
+import com.rabbitmq.client.AMQP;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -9,18 +18,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.github.fridujo.rabbitmq.mock.AmqArguments;
-import com.github.fridujo.rabbitmq.mock.MockQueue;
-import com.github.fridujo.rabbitmq.mock.Receiver;
-import com.github.fridujo.rabbitmq.mock.ReceiverPointer;
-import com.github.fridujo.rabbitmq.mock.ReceiverRegistry;
-import com.rabbitmq.client.AMQP;
+import static java.lang.String.format;
 
 public abstract class BindableMockExchange implements MockExchange {
-    private static final Logger LOGGER = LoggerFactory.getLogger(MockQueue.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(BindableMockExchange.class);
 
     protected final Set<BindConfiguration> bindConfigurations = new LinkedHashSet<>();
     private final String name;
@@ -28,6 +29,7 @@ public abstract class BindableMockExchange implements MockExchange {
     private final AmqArguments arguments;
     private final ReceiverPointer pointer;
     private final ReceiverRegistry receiverRegistry;
+    private Optional<MockPolicy> mockPolicy = Optional.empty();
 
     protected BindableMockExchange(String name, String type, AmqArguments arguments, ReceiverRegistry receiverRegistry) {
         this.name = name;
@@ -66,7 +68,12 @@ public abstract class BindableMockExchange implements MockExchange {
     }
 
     private Optional<Receiver> getAlternateExchange() {
-        return arguments.getAlternateExchange().flatMap(receiverRegistry::getReceiver);
+        Optional<ReceiverPointer> policyAlternativeExchange = mockPolicy.flatMap(MockPolicy::getAlternateExchange);
+        Optional<ReceiverPointer> exchangeArgumentAlternativeExchange = arguments.getAlternateExchange();
+
+        return exchangeArgumentAlternativeExchange.map(Optional::of)
+            .orElse(policyAlternativeExchange)
+            .flatMap(receiverRegistry::getReceiver);
     }
 
     protected abstract Stream<ReceiverPointer> matchingReceivers(String routingKey, AMQP.BasicProperties props);
@@ -83,6 +90,12 @@ public abstract class BindableMockExchange implements MockExchange {
     @Override
     public void unbind(ReceiverPointer receiver, String routingKey) {
         bindConfigurations.remove(new BindConfiguration(routingKey, receiver, Collections.emptyMap()));
+    }
+
+    @Override
+    public void setPolicy(Optional<MockPolicy> mockPolicy) {
+        mockPolicy.ifPresent(p -> LOGGER.info(localized(format("Applied policy %s", p))));
+        this.mockPolicy = mockPolicy;
     }
 
     @Override
