@@ -1,5 +1,10 @@
 package com.github.fridujo.rabbitmq.mock;
 
+import static com.github.fridujo.rabbitmq.mock.tool.ParameterMarshaller.getParameterAsExchangePointer;
+import static com.github.fridujo.rabbitmq.mock.tool.ParameterMarshaller.getParameterAsPositiveInteger;
+import static com.github.fridujo.rabbitmq.mock.tool.ParameterMarshaller.getParameterAsPositiveLong;
+import static com.github.fridujo.rabbitmq.mock.tool.ParameterMarshaller.getParameterAsPositiveShort;
+import static com.github.fridujo.rabbitmq.mock.tool.ParameterMarshaller.getParameterAsString;
 import static java.util.Collections.emptyMap;
 
 import java.util.Arrays;
@@ -14,7 +19,7 @@ public class AmqArguments {
     public static final String QUEUE_MAX_LENGTH_BYTES_KEY = "x-max-length-bytes";
     public static final String OVERFLOW_KEY = "x-overflow";
     public static final String MAX_PRIORITY_KEY = "x-max-priority";
-    private final String ALTERNATE_EXCHANGE_KEY = "alternate-exchange";
+    public static final String ALTERNATE_EXCHANGE_KEY = "alternate-exchange";
     private final Map<String, Object> arguments;
 
     public static AmqArguments empty() {
@@ -26,58 +31,37 @@ public class AmqArguments {
     }
 
     public Optional<ReceiverPointer> getAlternateExchange() {
-        return string(ALTERNATE_EXCHANGE_KEY)
-            .map(aeName -> new ReceiverPointer(ReceiverPointer.Type.EXCHANGE, aeName));
+        return getParameterAsExchangePointer.apply(ALTERNATE_EXCHANGE_KEY, arguments);
     }
 
     public Optional<ReceiverPointer> getDeadLetterExchange() {
-        return string(DEAD_LETTER_EXCHANGE_KEY)
-            .map(aeName -> new ReceiverPointer(ReceiverPointer.Type.EXCHANGE, aeName));
+        return getParameterAsExchangePointer.apply(DEAD_LETTER_EXCHANGE_KEY, arguments);
     }
 
     public Optional<String> getDeadLetterRoutingKey() {
-        return string(DEAD_LETTER_ROUTING_KEY_KEY);
+        return getParameterAsString.apply(DEAD_LETTER_ROUTING_KEY_KEY, arguments);
     }
 
     public Optional<Integer> queueLengthLimit() {
-        return positiveInteger(QUEUE_MAX_LENGTH_KEY);
+        return getParameterAsPositiveInteger.apply(QUEUE_MAX_LENGTH_KEY, arguments);
     }
 
     public Optional<Integer> queueLengthBytesLimit() {
-        return positiveInteger(QUEUE_MAX_LENGTH_BYTES_KEY);
+        return getParameterAsPositiveInteger.apply(QUEUE_MAX_LENGTH_BYTES_KEY, arguments);
     }
 
     public Overflow overflow() {
-        return string(OVERFLOW_KEY)
+        return getParameterAsString.apply(OVERFLOW_KEY, arguments)
             .flatMap(Overflow::parse)
             .orElse(Overflow.DROP_HEAD);
     }
 
     public Optional<Long> getMessageTtlOfQueue() {
-        return Optional.ofNullable(arguments.get(MESSAGE_TTL_KEY))
-            .filter(aeObject -> aeObject instanceof Number)
-            .map(Number.class::cast)
-            .map(number -> number.longValue());
+        return getParameterAsPositiveLong.apply(MESSAGE_TTL_KEY, arguments);
     }
 
     public Optional<Short> queueMaxPriority() {
-        return positiveInteger(MAX_PRIORITY_KEY)
-            .filter(i -> i < 256)
-            .map(Integer::shortValue);
-    }
-
-    private Optional<Integer> positiveInteger(String key) {
-        return Optional.ofNullable(arguments.get(key))
-            .filter(aeObject -> aeObject instanceof Number)
-            .map(Number.class::cast)
-            .map(num -> num.intValue())
-            .filter(i -> i > 0);
-    }
-
-    private Optional<String> string(String key) {
-        return Optional.ofNullable(arguments.get(key))
-            .filter(aeObject -> aeObject instanceof String)
-            .map(String.class::cast);
+        return getParameterAsPositiveShort.apply(MAX_PRIORITY_KEY, arguments);
     }
 
     public enum Overflow {
