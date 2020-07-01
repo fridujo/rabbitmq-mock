@@ -195,4 +195,46 @@ public class MetricsCollectorTest {
             assertThat(registry.get("rabbitmq.published").counter().count()).isEqualTo(1);
         }
     }
+
+    @Test
+    void metrics_recorded_when_single_ack_using_different_channel_to_that_which_declared_queue() throws IOException, TimeoutException {
+        MockConnectionFactory mockConnectionFactory = new MockConnectionFactory();
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        mockConnectionFactory.setMetricsCollector(new MicrometerMetricsCollector(registry));
+        final AtomicBoolean counterIncrementedBeforeHandleDelivery = new AtomicBoolean();
+
+        try (MockConnection connection = mockConnectionFactory.newConnection();
+             Channel queueCreatingChannel = connection.createChannel();
+             Channel queueMutatingChannel = connection.createChannel()) {
+
+            String queueName = queueCreatingChannel.queueDeclare().getQueue();
+
+            queueMutatingChannel.basicPublish("", queueName, null, "test".getBytes());
+
+            queueMutatingChannel.basicConsume(queueName, new DefaultConsumer(queueMutatingChannel) {
+                @Override
+                public void handleDelivery(String consumerTag,
+                                           Envelope envelope,
+                                           AMQP.BasicProperties properties,
+                                           byte[] body) throws IOException {
+                    counterIncrementedBeforeHandleDelivery.set(true);
+                    queueMutatingChannel.basicAck(envelope.getDeliveryTag(), false);
+
+                }
+
+                @Override
+                public void handleCancelOk(String consumerTag) {
+                    //Consumer cancellation is not the purpose of this test
+                }
+            });
+
+            Assertions.assertTimeoutPreemptively(Duration.ofMillis(200L), () -> {
+                while (!counterIncrementedBeforeHandleDelivery.get()) {
+                    TimeUnit.MILLISECONDS.sleep(10L);
+                }
+            });
+
+            assertThat(registry.get("rabbitmq.acknowledged").counter().count()).isEqualTo(1);
+        }
+    }
 }
