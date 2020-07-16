@@ -632,22 +632,31 @@ class ChannelTest {
                 channel.txRollback();
                 channel.txCommit();
 
-                channel.basicPublish("", queue, null, "first message".getBytes());
+                String firstMsg = "first message";
+                channel.basicPublish("", queue, null, firstMsg.getBytes());
                 assertThat(channel.basicGet(queue, true)).isNull();
                 channel.txCommit();
-                assertThat(channel.basicGet(queue, true)).isNotNull();
+                assertThat(channel.basicGet(queue, true).getBody()).isEqualTo(firstMsg.getBytes());
 
-                channel.basicPublish("", queue, null, "second message".getBytes());
+                String secondMsg = "second message";
+                channel.basicPublish("", queue, null, secondMsg.getBytes());
                 assertThat(channel.basicGet(queue, true)).isNull();
                 channel.txCommit();
-                assertThat(channel.basicGet(queue, true)).isNotNull();
+                assertThat(channel.basicGet(queue, true).getBody()).isEqualTo(secondMsg.getBytes());
                 // Channel contained only one message as transactions are cleared after commit
                 assertThat(channel.basicGet(queue, true)).isNull();
 
-                channel.basicPublish("", queue, null, "third message".getBytes());
+                String thirdMsg = "third message";
+                channel.basicPublish("", queue, null, thirdMsg.getBytes());
                 assertThat(channel.basicGet(queue, true)).isNull();
                 channel.txRollback();
                 assertThat(channel.basicGet(queue, true)).isNull();
+
+                String fourthMsg = "fourth message";
+                channel.basicPublish("", queue, null, fourthMsg.getBytes());
+                assertThat(channel.basicGet(queue, true)).isNull();
+                channel.txCommit();
+                assertThat(channel.basicGet(queue, true).getBody()).isEqualTo(fourthMsg.getBytes());
             }
         }
     }

@@ -571,6 +571,7 @@ public class MockChannel implements Channel {
         if (transaction == null) {
             throw new IllegalStateException("No started transaction (make sure you called txSelect before txRollback");
         }
+        transaction = new Transaction(this.node);
         return new AMQImpl.Tx.RollbackOk();
     }
 
