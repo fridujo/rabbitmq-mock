@@ -108,7 +108,10 @@ class ExchangeTest {
             "some.key, some.key",
             "*.orange.*, quick.orange.rabbit",
             "*.*.rabbit, quick.orange.rabbit",
-            "lazy.#, lazy.pink.rabbit"
+            "lazy.#, lazy",
+            "lazy.#, lazy.pink",
+            "lazy.#, lazy.pink.rabbit",
+            "some.#.key.*, some.stuff.key.1",
         })
         void binding_key_matches_routing_key(String bindingKey, String routingKey) {
             MultipleReceiverExchange topicExchange = (MultipleReceiverExchange) mockExchangeFactory.build("test", BuiltinExchangeType.TOPIC.getType(), empty(), mock(ReceiverRegistry.class));
@@ -124,7 +127,12 @@ class ExchangeTest {
             "*.orange.*, quick.orange.male.rabbit",
             "*.*.rabbit, quick.orange.fox",
             "*.*.rabbit, quick.orange.male.rabbit",
-            "lazy.#, quick.brown.fox"
+            "lazy.#, quick.brown.fox",
+            "lazy.#, lazy1.brown.fox",
+            "some.#.key.*, some.stuff.key",
+            "some.#.key.*, some.stuff.key",
+            "some.#.key.*, some.stuff.key.",
+            "some.#.key.*, some.stuff.key.one.two",
         })
         void binding_key_does_not_match_routing_key(String bindingKey, String routingKey) {
             MultipleReceiverExchange topicExchange = (MultipleReceiverExchange) mockExchangeFactory.build("test", BuiltinExchangeType.TOPIC.getType(), empty(), mock(ReceiverRegistry.class));
