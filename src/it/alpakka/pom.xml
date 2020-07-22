@@ -19,14 +19,14 @@
         <rabbitmq-mock.version>@rabbitmq-mock.version@</rabbitmq-mock.version>
 
         <scala.version>2.13</scala.version>
-        <scala-library.version>${scala.version}.0</scala-library.version>
-        <akka.version>2.5.25</akka.version>
-        <alpakka.version>1.1.1</alpakka.version>
-        <junit.version>5.5.2</junit.version>
-        <scalatest.version>3.0.8</scalatest.version>
+        <scala-library.version>${scala.version}.3</scala-library.version>
+        <akka.version>2.5.31</akka.version>
+        <alpakka.version>2.0.1</alpakka.version>
+        <junit.version>5.6.2</junit.version>
+        <scalatest.version>3.2.0</scalatest.version>
 
         <maven-surefire-plugin.version>2.22.2</maven-surefire-plugin.version>
-        <scala-maven-plugin.version>4.2.0</scala-maven-plugin.version>
+        <scala-maven-plugin.version>4.4.0</scala-maven-plugin.version>
         <scalatest-maven-plugin.version>2.0.0</scalatest-maven-plugin.version>
     </properties>
     <dependencies>

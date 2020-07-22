@@ -7,14 +7,15 @@ import akka.testkit.{ImplicitSender, TestKit, TestProbe}
 import com.github.fridujo.rabbitmq.mock.{MockChannel, MockConnectionFactory}
 import com.rabbitmq.client.AMQP.BasicProperties
 import com.rabbitmq.client.{AMQP, Channel, Connection, ConnectionFactory, DefaultConsumer, Envelope}
-import org.scalatest.FunSuiteLike
+import org.scalatest.funsuite.AnyFunSuiteLike
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
+
 /**
   * @author mdiasribeiro
   */
-class TestSuite extends TestKit(ActorSystem("TestSuite")) with ImplicitSender with FunSuiteLike {
+class TestSuite extends TestKit(ActorSystem("TestSuite")) with ImplicitSender with AnyFunSuiteLike {
 
     def bindActorToQueue(channel: Channel, receiver: ActorRef, queueName: String, consumerTag: String = "myConsumerTag"): Unit = {
         channel.basicConsume(queueName, true, consumerTag, new DefaultConsumer(channel) {
