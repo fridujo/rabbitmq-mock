@@ -258,14 +258,29 @@
                         </configuration>
                     </execution>
                     <execution>
-                        <id>spring-boot-2.2.2</id>
+                        <id>spring-boot-2.2.8</id>
                         <goals>
                             <goal>run</goal>
                         </goals>
                         <phase>integration-test</phase>
                         <configuration>
                             <filterProperties>
-                                <spring-boot.version>2.2.2.RELEASE</spring-boot.version>
+                                <spring-boot.version>2.2.8.RELEASE</spring-boot.version>
+                            </filterProperties>
+                            <pomIncludes>
+                                <pomInclude>spring_boot/pom.xml</pomInclude>
+                            </pomIncludes>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>spring-boot-2.3.1</id>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <phase>integration-test</phase>
+                        <configuration>
+                            <filterProperties>
+                                <spring-boot.version>2.3.1.RELEASE</spring-boot.version>
                             </filterProperties>
                             <pomIncludes>
                                 <pomInclude>spring_boot/pom.xml</pomInclude>
