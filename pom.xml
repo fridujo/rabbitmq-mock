@@ -21,7 +21,7 @@
 
         <assertj.version>3.19.0</assertj.version>
         <mockito.version>3.8.0</mockito.version>
-        <micrometer.version>1.6.4</micrometer.version>
+        <micrometer.version>1.6.5</micrometer.version>
         <spring.amqp.version>2.3.5</spring.amqp.version>
         <logback.version>1.2.3</logback.version>
 
