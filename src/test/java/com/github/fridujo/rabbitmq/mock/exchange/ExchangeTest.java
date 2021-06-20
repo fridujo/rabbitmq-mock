@@ -5,6 +5,7 @@ import static com.github.fridujo.rabbitmq.mock.exchange.MockExchangeCreator.crea
 import static java.util.Collections.emptyMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -73,6 +74,12 @@ class ExchangeTest {
             BindConfiguration bindConfiguration = new BindConfiguration(bindingKey, null, emptyMap());
 
             assertThat(directExchange.match(bindConfiguration, routingKey, emptyMap())).isFalse();
+        }
+
+        @Test
+        void applying_policy_throws_exception() {
+            MockDefaultExchange mockDefaultExchange = new MockDefaultExchange(null);
+            assertThatThrownBy(() -> mockDefaultExchange.setPolicy(Optional.empty()), "No policy should be applied for the default exchange");
         }
     }
 

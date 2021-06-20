@@ -1,7 +1,9 @@
 package com.github.fridujo.rabbitmq.mock.exchange;
 
 import java.util.Map;
+import java.util.Optional;
 
+import com.github.fridujo.rabbitmq.mock.MockPolicy;
 import com.rabbitmq.client.AMQP;
 
 import com.github.fridujo.rabbitmq.mock.MockNode;
@@ -36,6 +38,11 @@ public class MockDefaultExchange implements MockExchange {
     @Override
     public void unbind(ReceiverPointer pointer, String routingKey) {
         // nothing needed
+    }
+
+    @Override
+    public void setPolicy(Optional<MockPolicy> mockPolicy) {
+        throw new IllegalStateException("No policy should be applied for the default exchange");
     }
 
     @Override
