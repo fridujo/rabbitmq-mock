@@ -1,6 +1,5 @@
 package com.github.fridujo.rabbitmq.mock.exchange;
 
-import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -81,8 +80,8 @@ public abstract class BindableMockExchange implements MockExchange {
     }
 
     @Override
-    public void unbind(ReceiverPointer receiver, String routingKey) {
-        bindConfigurations.remove(new BindConfiguration(routingKey, receiver, Collections.emptyMap()));
+    public void unbind(ReceiverPointer receiver, String routingKey, Map<String, Object> arguments) {
+        bindConfigurations.remove(new BindConfiguration(routingKey, receiver, arguments));
     }
 
     @Override
@@ -116,12 +115,13 @@ public abstract class BindableMockExchange implements MockExchange {
             if (o == null || getClass() != o.getClass()) return false;
             BindConfiguration that = (BindConfiguration) o;
             return Objects.equals(bindingKey, that.bindingKey) &&
-                Objects.equals(receiverPointer, that.receiverPointer);
+                Objects.equals(receiverPointer, that.receiverPointer) &&
+                Objects.equals(bindArguments, that.bindArguments);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(bindingKey, receiverPointer);
+            return Objects.hash(bindingKey, receiverPointer, bindArguments);
         }
     }
 }

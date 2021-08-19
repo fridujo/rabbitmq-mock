@@ -11,5 +11,5 @@ public interface MockExchange extends Receiver {
 
     void bind(ReceiverPointer mockQueue, String routingKey, Map<String, Object> arguments);
 
-    void unbind(ReceiverPointer pointer, String routingKey);
+    void unbind(ReceiverPointer pointer, String routingKey, Map<String, Object> arguments);
 }

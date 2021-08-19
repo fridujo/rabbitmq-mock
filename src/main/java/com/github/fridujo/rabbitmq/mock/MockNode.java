@@ -74,7 +74,7 @@ public class MockNode implements ReceiverRegistry, TransactionalOperations {
     public AMQP.Exchange.UnbindOk exchangeUnbind(String destinationName, String sourceName, String routingKey, Map<String, Object> arguments) {
         MockExchange source = getExchangeUnchecked(sourceName);
         MockExchange destination = getExchangeUnchecked(destinationName);
-        source.unbind(destination.pointer(), routingKey);
+        source.unbind(destination.pointer(), routingKey, arguments);
         return new AMQImpl.Exchange.UnbindOk();
     }
 
@@ -101,7 +101,7 @@ public class MockNode implements ReceiverRegistry, TransactionalOperations {
     public AMQP.Queue.UnbindOk queueUnbind(String queueName, String exchangeName, String routingKey, Map<String, Object> arguments) {
         MockExchange exchange = getExchangeUnchecked(exchangeName);
         MockQueue queue = getQueueUnchecked(queueName);
-        exchange.unbind(queue.pointer(), routingKey);
+        exchange.unbind(queue.pointer(), routingKey, arguments);
         return new AMQImpl.Queue.UnbindOk();
     }
 
