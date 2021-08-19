@@ -39,8 +39,8 @@ public class ConsistentHashExchange extends SingleReceiverExchange {
     }
 
     @Override
-    public void unbind(ReceiverPointer receiver, String routingKey) {
-        super.unbind(receiver, routingKey);
+    public void unbind(ReceiverPointer receiver, String routingKey, Map<String, Object> arguments) {
+        super.unbind(receiver, routingKey, arguments);
         buckets.removeIf(b -> b.receiverPointer.equals(receiver));
     }
 

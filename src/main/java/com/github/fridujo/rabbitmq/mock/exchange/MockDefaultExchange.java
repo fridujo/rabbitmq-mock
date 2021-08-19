@@ -34,7 +34,7 @@ public class MockDefaultExchange implements MockExchange {
     }
 
     @Override
-    public void unbind(ReceiverPointer pointer, String routingKey) {
+    public void unbind(ReceiverPointer pointer, String routingKey, Map<String, Object> arguments) {
         // nothing needed
     }
 

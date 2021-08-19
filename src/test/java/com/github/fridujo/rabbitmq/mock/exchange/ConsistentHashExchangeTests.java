@@ -59,7 +59,7 @@ class ConsistentHashExchangeTests {
         consistentHashEx.bind(q3, " ", emptyMap());
         ReceiverPointer q4 = new ReceiverPointer(ReceiverPointer.Type.QUEUE, "Q4");
         consistentHashEx.bind(q4, "AA", emptyMap());
-        consistentHashEx.unbind(q4, "AA");
+        consistentHashEx.unbind(q4, "AA", emptyMap());
 
         int messagesCount = 1_000_000;
         Map<ReceiverPointer, Long> deliveriesByReceiver = IntStream.range(0, messagesCount)

@@ -7,7 +7,9 @@ import static org.assertj.core.api.Assertions.fail;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -184,5 +186,83 @@ class IntegrationTest {
                 assertThat(redeliveredMessageEnvelope.get().isRedeliver()).isTrue();
             }
         }
+    }
+
+    @Test
+    void basic_consume_with_multiple_bindings_should_receive_messages_via_all_bindings() throws IOException, TimeoutException, InterruptedException {
+        String exchangeName = "test-exchange";
+
+        try (Connection conn = new MockConnectionFactory().newConnection()) {
+            assertThat(conn).isInstanceOf(MockConnection.class);
+
+            try (Channel channel = conn.createChannel()) {
+                assertThat(channel).isInstanceOf(MockChannel.class);
+
+                channel.exchangeDeclare(exchangeName, "headers", true);
+                String queueName = channel.queueDeclare().getQueue();
+
+                // Create multiple bindings that only differ in header parameter value:
+                channel.queueBind(queueName, exchangeName, "", args("my-header", "x", "x-match", "all"));
+                channel.queueBind(queueName, exchangeName, "", args("my-header", "y", "x-match", "all"));
+                channel.queueBind(queueName, exchangeName, "", args("my-header", "z", "x-match", "all"));
+
+                List<String> messages = new ArrayList<>();
+                channel.basicConsume(queueName, false, "",
+                    new DefaultConsumer(channel) {
+                        @Override
+                        public void handleDelivery(String consumerTag,
+                                                   Envelope envelope,
+                                                   AMQP.BasicProperties properties,
+                                                   byte[] body) throws IOException {
+                            long deliveryTag = envelope.getDeliveryTag();
+                            messages.add(new String(body));
+                            // (process the message components here ...)
+                            channel.basicAck(deliveryTag, false);
+                        }
+                    });
+
+                // publish messages that only differ in header parameter value:
+                channel.basicPublish(exchangeName, "", new AMQP.BasicProperties.Builder().headers(args("my-header", "x")).build(), "Hello, world!".getBytes());
+                channel.basicPublish(exchangeName, "", new AMQP.BasicProperties.Builder().headers(args("my-header", "y")).build(), "How are you, world!".getBytes());
+                channel.basicPublish(exchangeName, "", new AMQP.BasicProperties.Builder().headers(args("my-header", "z")).build(), "Goodbye, world!".getBytes());
+
+                TimeUnit.MILLISECONDS.sleep(200L);
+
+                // expect three messages:
+                assertThat(messages).containsExactly("Hello, world!", "How are you, world!", "Goodbye, world!");
+
+                // remove one of the bindings:
+                channel.queueUnbind(queueName, exchangeName, "", args("my-header", "y", "x-match", "all"));
+                messages.clear();
+
+                // publish messages that only differ in header parameter value:
+                channel.basicPublish(exchangeName, "", new AMQP.BasicProperties.Builder().headers(args("my-header", "x")).build(), "Hello, world!".getBytes());
+                channel.basicPublish(exchangeName, "", new AMQP.BasicProperties.Builder().headers(args("my-header", "y")).build(), "How are you, world!".getBytes());
+                channel.basicPublish(exchangeName, "", new AMQP.BasicProperties.Builder().headers(args("my-header", "z")).build(), "Goodbye, world!".getBytes());
+
+                TimeUnit.MILLISECONDS.sleep(200L);
+
+                // expect two messages from remaining bindings:
+                assertThat(messages).containsExactly("Hello, world!", "Goodbye, world!");
+            }
+        }
+    }
+
+    private static Map<String, Object> args(Object... args) {
+        if (args.length % 2 != 0) {
+            throw new IllegalArgumentException("must provide arguments in pairs");
+        }
+
+        Map<String, Object> map = new HashMap<>();
+
+        for (int i = 0; i < args.length; i += 2) {
+            if (!(args[i] instanceof String)) {
+                throw new IllegalArgumentException("argument " + i + " must be a String: " + args[i]);
+            }
+
+            map.put((String)args[i], args[i + 1]);
+        }
+
+        return map;
     }
 }
