@@ -1,4 +1,6 @@
-# RabbitMQ-mock
+# RabbitMQ-mock <a href="https://foojay.io/today/works-with-openjdk"><img align="right" src="https://github.com/foojayio/badges/raw/main/works_with_openjdk/Works-with-OpenJDK.png" width="100"></a>
+<br>
+
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/eddfd3e0ca8c44379becf68efd6524af)](https://app.codacy.com/app/ledoyen/rabbitmq-mock?utm_source=github.com&utm_medium=referral&utm_content=fridujo/rabbitmq-mock&utm_campaign=badger)
 [![Build Status](https://travis-ci.com/fridujo/rabbitmq-mock.svg?branch=master)](https://travis-ci.com/fridujo/rabbitmq-mock)
 [![Coverage Status](https://codecov.io/gh/fridujo/rabbitmq-mock/branch/master/graph/badge.svg)](https://codecov.io/gh/fridujo/rabbitmq-mock/)
