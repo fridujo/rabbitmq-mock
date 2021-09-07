@@ -1,8 +1,11 @@
 package com.github.fridujo.rabbitmq.mock;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import com.rabbitmq.client.AMQP;
@@ -188,5 +191,21 @@ public class MockNode implements ReceiverRegistry, TransactionalOperations {
 
     public Configuration getConfiguration() {
         return configuration;
+    }
+
+    public void applyPolicies(Set<MockPolicy> policies) {
+        applyPolicyToReceivers(policies, exchanges.values());
+        applyPolicyToReceivers(policies, queues.values());
+    }
+
+    private <T extends Receiver> void applyPolicyToReceivers(Set<MockPolicy> policies, Collection<T> receivers) {
+        Function<T, Optional<MockPolicy>> calculateHighestPriorityPolicy = r -> policies.stream()
+            .sorted(MockPolicy.comparator)
+            .filter(p -> p.receiverMatchesPolicyPattern.test(r))
+            .findFirst();
+
+        receivers.stream()
+            .filter(r -> !MockDefaultExchange.class.isInstance(r))
+            .forEach(r -> r.setPolicy(calculateHighestPriorityPolicy.apply(r)));
     }
 }
