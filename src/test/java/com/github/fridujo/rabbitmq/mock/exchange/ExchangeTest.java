@@ -145,49 +145,66 @@ class ExchangeTest {
     @Nested
     class HeadersTest {
 
-        @ParameterizedTest(name = "{0} matching by default headers '{'os: 'linux', cores: '8''}': {1}")
+        @ParameterizedTest(name = "[{0}] matching by default headers '{'os: 'linux', cores: '8', brand: null'}': {1}")
         @CsvSource({
             "'', false",
+            "'model, null', false",
             "'os, linux', false",
             "'os, linux, cores, 4', false",
-            "'os, linux, cores, 8', true",
+            "'os, linux, cores, 8', false",
+            "'os, linux, cores, 8, brand, null', true",
+            "'os, linux, cores, 8, brand, Intel', true"
         })
         void headers_topic_without_x_match_does_not_match_if_one_header_is_not_matching(String headers, boolean matches) {
             MultipleReceiverExchange headersExchange = (MultipleReceiverExchange) mockExchangeFactory.build("test", BuiltinExchangeType.HEADERS.getType(), empty(), mock(ReceiverRegistry.class));
             BindConfiguration bindConfiguration = new BindConfiguration("unused", null,
-                map("os", "linux", "cores", "8"));
+                map("os", "linux", "cores", "8", "brand", null));
 
             assertThat(headersExchange.match(bindConfiguration, "unused", map(headers.split(",\\s*")))).isEqualTo(matches);
         }
 
-        @ParameterizedTest(name = "{0} matching all headers '{'os: 'linux', cores: '8''}': {1}")
+        @ParameterizedTest(name = "[{0}] matching all headers '{'os: 'linux', cores: '8', brand: null'}': {1}")
         @CsvSource({
             "'', false",
+            "'model, null', false",
             "'os, linux', false",
             "'os, linux, cores, 4', false",
-            "'os, linux, cores, 8', true",
+            "'os, linux, cores, 8', false",
+            "'os, linux, cores, 8, brand, null', true",
+            "'os, linux, cores, 8, brand, Intel', true"
         })
         void headers_topic_with_x_match_all_does_not_match_if_one_header_is_not_matching(String headers, boolean matches) {
             MultipleReceiverExchange headersExchange = (MultipleReceiverExchange) mockExchangeFactory.build("test", BuiltinExchangeType.HEADERS.getType(), empty(), mock(ReceiverRegistry.class));
             BindConfiguration bindConfiguration = new BindConfiguration("unused", null,
-                map("os", "linux", "cores", "8", "x-match", "all"));
+                map("os", "linux", "cores", "8", "brand", null, "x-match", "all"));
 
             assertThat(headersExchange.match(bindConfiguration, "unused", map(headers.split(",\\s*")))).isEqualTo(matches);
         }
 
-        @ParameterizedTest(name = "{0} matching any headers '{'os: 'linux', cores: '8''}': {1}")
+        @ParameterizedTest(name = "[{0}] matching any headers '{'os: 'linux', cores: '8', brand: null'}': {1}")
         @CsvSource({
             "'', false",
+            "'model, null', false",
             "'os, linux', true",
             "'cores, 8', true",
             "'os, linux, cores, 4', true",
             "'os, linux, cores, 8', true",
             "'os, ios, cores, 8', true",
+            "'brand, null', true",
+            "'brand, Intel', true",
+            "'cores, 4, brand, null', true",
+            "'cores, 4, brand, Intel', true",
+            "'cores, 8, brand, null', true",
+            "'cores, 8, brand, Intel', true",
+            "'os, ios, brand, null', true",
+            "'os, ios, brand, Intel', true",
+            "'os, linux, brand, null', true",
+            "'os, linux, brand, Intel', true"
         })
         void headers_topic_with_x_match_any_matches_if_one_header_is_matching(String headers, boolean matches) {
             MultipleReceiverExchange headersExchange = (MultipleReceiverExchange) mockExchangeFactory.build("test", BuiltinExchangeType.HEADERS.getType(), empty(), mock(ReceiverRegistry.class));
             BindConfiguration bindConfiguration = new BindConfiguration("unused", null,
-                map("os", "linux", "cores", "8", "x-match", "any"));
+                map("os", "linux", "cores", "8", "brand", null, "x-match", "any"));
 
             assertThat(headersExchange.match(bindConfiguration, "unused", map(headers.split(",\\s*")))).isEqualTo(matches);
         }
@@ -199,7 +216,7 @@ class ExchangeTest {
                 if (i % 2 == 0) {
                     lastKey = keysAndValues[i];
                 } else {
-                    map.put(lastKey, keysAndValues[i]);
+                    map.put(lastKey, "null".equals(keysAndValues[i]) ? null : keysAndValues[i]);
                 }
             }
             return map;
