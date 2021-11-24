@@ -31,7 +31,7 @@ public class MockHeadersExchange extends MultipleReceiverExchange {
             .filter(X_MATCH_VALID_VALUES::contains)
             .orElse(MATCH_ALL);
 
-        Predicate<Map.Entry<String, Object>> argumentPredicate = e -> Objects.equals(e.getValue(), headers.get(e.getKey()));
+        Predicate<Map.Entry<String, Object>> argumentPredicate = e -> e.getValue() == null ? headers.containsKey(e.getKey()) : Objects.equals(e.getValue(), headers.get(e.getKey()));
         Stream<Map.Entry<String, Object>> argumentsToMatch = bindConfiguration.bindArguments.entrySet().stream()
             .filter(e -> !X_MATCH_KEY.equals(e.getKey()));
 
