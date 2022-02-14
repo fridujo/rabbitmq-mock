@@ -29,7 +29,7 @@
         <junit.jupiter.version>5.7.2</junit.jupiter.version>
         <pitest-junit5.version>0.14</pitest-junit5.version>
 
-        <maven-javadoc-plugin.version>3.3.0</maven-javadoc-plugin.version>
+        <maven-javadoc-plugin.version>3.3.2</maven-javadoc-plugin.version>
         <maven-source-plugin.version>3.2.1</maven-source-plugin.version>
         <maven-surefire-plugin.version>2.22.2</maven-surefire-plugin.version>
         <maven-invoker-plugin.version>3.2.2</maven-invoker-plugin.version>
