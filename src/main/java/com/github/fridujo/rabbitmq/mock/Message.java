@@ -3,6 +3,8 @@ package com.github.fridujo.rabbitmq.mock;
 import com.rabbitmq.client.AMQP;
 
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 public class Message {
@@ -39,6 +41,16 @@ public class Message {
 
     public int priority() {
         return Optional.ofNullable(props.getPriority()).orElse(0);
+    }
+
+    public Message deliverWithOffset(Long offset) {
+        AMQP.BasicProperties.Builder builder = props.builder();
+        Map<String, Object> oldHeaders = props.getHeaders();
+        Map<String, Object> newHeaders = new HashMap<>();
+        if (oldHeaders != null) newHeaders.putAll(oldHeaders);
+        newHeaders.put("x-stream-offset", offset);
+        AMQP.BasicProperties newProps = builder.headers(newHeaders).build();
+        return new Message(id, exchangeName, routingKey, newProps, body, expiryTime, redelivered);
     }
 
     @Override

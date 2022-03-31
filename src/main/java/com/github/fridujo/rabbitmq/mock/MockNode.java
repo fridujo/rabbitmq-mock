@@ -45,7 +45,16 @@ public class MockNode implements ReceiverRegistry, TransactionalOperations {
             definitiveConsumerTag = consumerTag;
         }
 
-        getQueueUnchecked(queueName).basicConsume(definitiveConsumerTag, callback, autoAck, deliveryTagSupplier, mockConnection, mockChannel);
+        MockQueue mockQueue = getQueueUnchecked(queueName);
+        if (mockQueue instanceof MockStream) {
+            MockStream mockStream = (MockStream) mockQueue;
+            if (arguments != null) {
+                callback = new DecoratedConsumerWithArguments(callback, arguments);
+            }
+            mockStream.basicConsume(definitiveConsumerTag, callback, autoAck, deliveryTagSupplier, mockConnection, mockChannel);
+        } else {
+            mockQueue.basicConsume(definitiveConsumerTag, callback, autoAck, deliveryTagSupplier, mockConnection, mockChannel);
+        }
 
         return definitiveConsumerTag;
     }
@@ -79,7 +88,14 @@ public class MockNode implements ReceiverRegistry, TransactionalOperations {
     }
 
     public AMQP.Queue.DeclareOk queueDeclare(String queueName, boolean durable, boolean exclusive, boolean autoDelete, Map<String, Object> arguments) {
-        queues.putIfAbsent(queueName, new MockQueue(queueName, new AmqArguments(arguments), this));
+
+        AmqArguments amqArguments = new AmqArguments(arguments);
+
+        MockQueue newQueue = amqArguments.queueType() == AmqArguments.QueueType.STREAM
+            ? new MockStream(queueName, amqArguments, this)
+            : new MockQueue(queueName, amqArguments, this);
+
+        queues.putIfAbsent(queueName, newQueue);
         return new AMQP.Queue.DeclareOk.Builder()
             .queue(queueName)
             .build();
