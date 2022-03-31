@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Optional;
 
 public class AmqArguments {
+    public static final String QUEUE_TYPE_KEY = "x-queue-type";
     public static final String DEAD_LETTER_EXCHANGE_KEY = "x-dead-letter-exchange";
     public static final String DEAD_LETTER_ROUTING_KEY_KEY = "x-dead-letter-routing-key";
     public static final String MESSAGE_TTL_KEY = "x-message-ttl";
@@ -66,6 +67,12 @@ public class AmqArguments {
             .map(Integer::shortValue);
     }
 
+    public QueueType queueType() {
+        return string(QUEUE_TYPE_KEY)
+            .flatMap(QueueType::parse)
+            .orElse(QueueType.CLASSIC);
+    }
+
     private Optional<Integer> positiveInteger(String key) {
         return Optional.ofNullable(arguments.get(key))
             .filter(aeObject -> aeObject instanceof Number)
@@ -90,6 +97,25 @@ public class AmqArguments {
         }
 
         private static Optional<Overflow> parse(String value) {
+            return Arrays.stream(values()).filter(v -> value.equals(v.stringValue)).findFirst();
+        }
+
+        @Override
+        public String toString() {
+            return stringValue;
+        }
+    }
+
+    public enum QueueType {
+        CLASSIC("classic"), STREAM("stream");
+
+        private final String stringValue;
+
+        QueueType(String stringValue) {
+            this.stringValue = stringValue;
+        }
+
+        private static Optional<QueueType> parse(String value) {
             return Arrays.stream(values()).filter(v -> value.equals(v.stringValue)).findFirst();
         }
 
