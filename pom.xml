@@ -35,7 +35,7 @@
         <maven-invoker-plugin.version>3.2.2</maven-invoker-plugin.version>
         <nexus-staging-maven-plugin.version>1.6.8</nexus-staging-maven-plugin.version>
         <jacoco-maven-plugin.version>0.8.7</jacoco-maven-plugin.version>
-        <pitest-maven-plugin.version>1.6.7</pitest-maven-plugin.version>
+        <pitest-maven-plugin.version>1.8.0</pitest-maven-plugin.version>
     </properties>
 
     <scm>
