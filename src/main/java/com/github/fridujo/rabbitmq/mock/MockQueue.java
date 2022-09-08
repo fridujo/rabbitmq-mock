@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -43,12 +42,12 @@ public class MockQueue implements Receiver {
     private final ReceiverRegistry receiverRegistry;
     private final Queue<Message> messages;
     private final RestartableExecutorService executorService;
-    private final Map<String, ConsumerAndTag> consumersByTag = new LinkedHashMap<>();
+    private final Map<String, ConsumerAndTag> consumersByTag = Collections.synchronizedMap(new LinkedHashMap<>());
     private final AtomicInteger consumerRollingSequence = new AtomicInteger();
     private final AtomicInteger messageSequence = new AtomicInteger();
-    private final Map<Long, Message> unackedMessagesByDeliveryTag = new LinkedHashMap<>();
+    private final Map<Long, Message> unackedMessagesByDeliveryTag = Collections.synchronizedMap(new LinkedHashMap<>());
     private final AtomicBoolean running = new AtomicBoolean(true);
-    private final Map<String, Set<Long>> unackedDeliveryTagsByConsumerTag = new LinkedHashMap<>();
+    private final Map<String, Set<Long>> unackedDeliveryTagsByConsumerTag = Collections.synchronizedMap(new LinkedHashMap<>());
 
     public MockQueue(String name, AmqArguments arguments, ReceiverRegistry receiverRegistry) {
         this.name = name;
@@ -88,11 +87,22 @@ public class MockQueue implements Receiver {
                 if (message.isExpired()) {
                     deadLetterWithReason(message, DeadLettering.ReasonType.EXPIRED);
                 } else {
-                    int index = consumerRollingSequence.incrementAndGet() % consumersByTag.size();
-                    ConsumerAndTag nextConsumer = new ArrayList<>(consumersByTag.values()).get(index);
+                    List<ConsumerAndTag> consumerAndTags = new ArrayList<>(consumersByTag.size());
+
+                    consumersByTag.values().forEach(consumerAndTags::add);  // iterates while synchronized
+
+                    int index = consumerRollingSequence.incrementAndGet() % consumerAndTags.size();
+                    ConsumerAndTag nextConsumer = consumerAndTags.get(index);
                     long deliveryTag = nextConsumer.deliveryTagSupplier.get();
+
                     unackedMessagesByDeliveryTag.put(deliveryTag, message);
-                    unackedDeliveryTagsByConsumerTag.computeIfAbsent(nextConsumer.tag, cTag -> new LinkedHashSet<>()).add(deliveryTag);
+                    unackedDeliveryTagsByConsumerTag.compute(nextConsumer.tag, (k, v) -> {  // manipulate the map, and its contained set while synchronized
+                        Set<Long> set = v == null ? new LinkedHashSet<>() : v;
+
+                        v.add(deliveryTag);
+
+                        return set;
+                    });
 
                     Envelope envelope = new Envelope(deliveryTag,
                         message.redelivered,
@@ -223,9 +233,11 @@ public class MockQueue implements Receiver {
     }
 
     private Message internal_removeFromUnacked(long deliveryTag) {
-        Message message = unackedMessagesByDeliveryTag.remove(deliveryTag);
-        unackedDeliveryTagsByConsumerTag.forEach((ctag, deliveryTags) -> deliveryTags.remove(deliveryTag));
-        return message;
+        synchronized(unackedDeliveryTagsByConsumerTag) {  // protects also the nested consumer tag set
+            Message message = unackedMessagesByDeliveryTag.remove(deliveryTag);
+            unackedDeliveryTagsByConsumerTag.forEach((ctag, deliveryTags) -> deliveryTags.remove(deliveryTag));
+            return message;
+        }
     }
 
     private String localized(String message) {
@@ -233,11 +245,19 @@ public class MockQueue implements Receiver {
     }
 
     public void basicCancel(String consumerTag) {
-        if (consumersByTag.containsKey(consumerTag)) {
-            Consumer consumer = consumersByTag.remove(consumerTag).consumer;
+        ConsumerAndTag removed = consumersByTag.remove(consumerTag);
+
+        if (removed != null) {
+            Consumer consumer = removed.consumer;
             consumer.handleCancelOk(consumerTag);
-            new HashSet<>(unackedDeliveryTagsByConsumerTag.computeIfAbsent(consumerTag, k -> Collections.emptySet()))
-                .forEach(deliveryTag -> basicReject(deliveryTag, true));
+
+            List<Long> unackedDeliveryTags;
+
+            synchronized(unackedDeliveryTagsByConsumerTag) {  // protects also the nested consumer tag set
+                unackedDeliveryTags = new ArrayList<>(unackedDeliveryTagsByConsumerTag.computeIfAbsent(consumerTag, k -> Collections.emptySet()));
+            }
+
+            unackedDeliveryTags.forEach(deliveryTag -> basicReject(deliveryTag, true));
         }
     }
 
@@ -283,10 +303,12 @@ public class MockQueue implements Receiver {
     }
 
     private void cancelConsumers() {
-        for (ConsumerAndTag consumerAndTag : consumersByTag.values()) {
-            cancel(consumerAndTag);
-        }
-        consumersByTag.clear();
+        // this iterates and clears consumersByTag atomically (synchronizes only once)
+        consumersByTag.values().removeIf(cat -> {
+            cancel(cat);
+
+            return true;
+        });
     }
 
     private void cancel(ConsumerAndTag consumerAndTag) {
@@ -298,9 +320,15 @@ public class MockQueue implements Receiver {
     }
 
     public void basicRecover(boolean requeue) {
-        Set<Long> unackedDeliveryTags = new LinkedHashSet<>(unackedMessagesByDeliveryTag.keySet());
+        Set<Long> unackedDeliveryTags = new LinkedHashSet<>();
+
+        unackedMessagesByDeliveryTag.keySet().forEach(unackedDeliveryTags::add);  // iterates while synchronized
+
         unackedDeliveryTags.forEach(unackedDeliveryTag -> messages.offer(internal_removeFromUnacked(unackedDeliveryTag)));
-        consumersByTag.values().forEach(consumerAndTag -> consumerAndTag.consumer.handleRecoverOk(consumerAndTag.tag));
+
+        synchronized(consumersByTag) {
+            consumersByTag.values().forEach(consumerAndTag -> consumerAndTag.consumer.handleRecoverOk(consumerAndTag.tag));
+        }
     }
 
     public int messageCount() {
@@ -318,16 +346,20 @@ public class MockQueue implements Receiver {
     }
 
     private void doWithUnackedUntil(long maxDeliveryTag, java.util.function.Consumer<Long> doWithRelevantDeliveryTag) {
-        if (unackedMessagesByDeliveryTag.containsKey(maxDeliveryTag)) {
-            Set<Long> storedDeliveryTagsToRemove = new LinkedHashSet<>();
-            for (Long storedDeliveryTag : unackedMessagesByDeliveryTag.keySet()) {
-                storedDeliveryTagsToRemove.add(storedDeliveryTag);
-                if (Long.valueOf(maxDeliveryTag).equals(storedDeliveryTag)) {
-                    break;
+        Set<Long> storedDeliveryTagsToRemove = new LinkedHashSet<>();
+
+        synchronized(unackedMessagesByDeliveryTag) {
+            if (unackedMessagesByDeliveryTag.containsKey(maxDeliveryTag)) {
+                for (Long storedDeliveryTag : unackedMessagesByDeliveryTag.keySet()) {
+                    storedDeliveryTagsToRemove.add(storedDeliveryTag);
+                    if (Long.valueOf(maxDeliveryTag).equals(storedDeliveryTag)) {
+                        break;
+                    }
                 }
             }
-            storedDeliveryTagsToRemove.forEach(doWithRelevantDeliveryTag);
         }
+
+        storedDeliveryTagsToRemove.forEach(doWithRelevantDeliveryTag);
     }
 
     private boolean queueLengthLimitReached() {
@@ -395,7 +427,11 @@ public class MockQueue implements Receiver {
     }
 
     public List<Message> getUnackedMessages() {
-        return new ArrayList<>(unackedMessagesByDeliveryTag.values());
+        ArrayList<Message> unackedMessages = new ArrayList<>(unackedMessagesByDeliveryTag.size());
+
+        unackedMessagesByDeliveryTag.values().forEach(unackedMessages::add);  // iterates while synchronized
+
+        return unackedMessages;
     }
 
     static class ConsumerAndTag {
