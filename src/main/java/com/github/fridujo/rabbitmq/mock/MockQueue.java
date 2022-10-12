@@ -99,7 +99,7 @@ public class MockQueue implements Receiver {
                     unackedDeliveryTagsByConsumerTag.compute(nextConsumer.tag, (k, v) -> {  // manipulate the map, and its contained set while synchronized
                         Set<Long> set = v == null ? new LinkedHashSet<>() : v;
 
-                        v.add(deliveryTag);
+                        set.add(deliveryTag);
 
                         return set;
                     });
