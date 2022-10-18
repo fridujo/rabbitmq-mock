@@ -15,4 +15,9 @@ jobs:
                   cache: 'maven'
             - run: ./mvnw -version
             - run: ./mvnw -U verify -DfailIfNoTests
+            - uses: actions/upload-artifact@v3
+              if: failure()
+              with:
+                  name: it-logs
+                  path: target/it/**/build.log
             - uses: codecov/codecov-action@v3
