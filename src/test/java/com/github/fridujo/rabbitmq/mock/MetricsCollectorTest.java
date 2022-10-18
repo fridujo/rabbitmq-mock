@@ -1,6 +1,15 @@
 package com.github.fridujo.rabbitmq.mock;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.DefaultConsumer;
+import com.rabbitmq.client.Envelope;
+import com.rabbitmq.client.GetResponse;
+import com.rabbitmq.client.impl.MicrometerMetricsCollector;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.awaitility.Awaitility;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -9,17 +18,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
-
-import com.rabbitmq.client.AMQP;
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.DefaultConsumer;
-import com.rabbitmq.client.Envelope;
-import com.rabbitmq.client.GetResponse;
-import com.rabbitmq.client.impl.MicrometerMetricsCollector;
-
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class MetricsCollectorTest {
 
@@ -173,10 +172,13 @@ public class MetricsCollectorTest {
                     TimeUnit.MILLISECONDS.sleep(10L);
                 }
             });
-            assertThat(publishedMessagesCounter.get()).isEqualTo(1);
-            assertThat(counterIncrementedBeforeHandleDelivery)
-                .as("Counter must be incremented before the call to handleDelivery")
-                .isTrue();
+
+            Awaitility.await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> {
+                assertThat(publishedMessagesCounter.get()).isEqualTo(1);
+                assertThat(counterIncrementedBeforeHandleDelivery)
+                    .as("Counter must be incremented before the call to handleDelivery")
+                    .isTrue();
+            });
         }
     }
 
@@ -234,7 +236,9 @@ public class MetricsCollectorTest {
                 }
             });
 
-            assertThat(registry.get("rabbitmq.acknowledged").counter().count()).isEqualTo(1);
+            Awaitility.await().atMost(1, TimeUnit.SECONDS)
+                .untilAsserted(() ->
+                    assertThat(registry.get("rabbitmq.acknowledged").counter().count()).isEqualTo(1));
         }
     }
 }
