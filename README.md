@@ -1,17 +1,15 @@
-# RabbitMQ-mock <a href="https://foojay.io/today/works-with-openjdk"><img align="right" src="https://github.com/foojayio/badges/raw/main/works_with_openjdk/Works-with-OpenJDK.png" width="100"></a>
-<br>
+# RabbitMQ-mock
 
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/eddfd3e0ca8c44379becf68efd6524af)](https://app.codacy.com/app/ledoyen/rabbitmq-mock?utm_source=github.com&utm_medium=referral&utm_content=fridujo/rabbitmq-mock&utm_campaign=badger)
 [![Build Status](https://github.com/fridujo/rabbitmq-mock/actions/workflows/build.yml/badge.svg)](https://github.com/fridujo/rabbitmq-mock/actions)
 [![Coverage Status](https://codecov.io/gh/fridujo/rabbitmq-mock/branch/master/graph/badge.svg)](https://codecov.io/gh/fridujo/rabbitmq-mock/)
-[![Maven Central](https://img.shields.io/maven-central/v/com.github.fridujo/rabbitmq-mock.svg)](https://search.maven.org/#search|ga|1|a:"rabbitmq-mock")
+[![Maven Central](https://img.shields.io/maven-central/v/com.github.fridujo/rabbitmq-mock.svg)](https://search.maven.org/artifact/com.github.fridujo/rabbitmq-mock)
 [![JitPack](https://jitpack.io/v/fridujo/rabbitmq-mock.svg)](https://jitpack.io/#fridujo/rabbitmq-mock)
-[![License](https://img.shields.io/github/license/fridujo/spring-automocker.svg)](https://opensource.org/licenses/Apache-2.0)
+[![License](https://img.shields.io/github/license/fridujo/rabbitmq-mock.svg)](https://opensource.org/licenses/Apache-2.0)
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Ffridujo%2Frabbitmq-mock.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Ffridujo%2Frabbitmq-mock?ref=badge_shield)
 
 Mock for RabbitMQ Java [amqp-client](https://github.com/rabbitmq/rabbitmq-java-client).
 
-> Compatible with versions **4.0.0** to **5.9.0** of [**com.rabbitmq:amqp-client**](https://github.com/rabbitmq/rabbitmq-java-client)
+> Compatible with versions **4.0.0** to **5+** of [**com.rabbitmq:amqp-client**](https://github.com/rabbitmq/rabbitmq-java-client)
 
 > Compatible with versions **3.6.3** to **4.0.0** with the [`com.github.fridujo.rabbitmq.mock.compatibility` package](src/main/java/com/github/fridujo/rabbitmq/mock/compatibility/MockConnectionFactoryFactory.java).
 
@@ -71,7 +69,7 @@ Add the following dependency to your **pom.xml**
 <dependency>
     <groupId>com.github.fridujo</groupId>
     <artifactId>rabbitmq-mock</artifactId>
-    <version>1.1.1</version>
+    <version>${rabbitmq-mock.version}</version>
     <scope>test</scope>
 </dependency>
 ```
@@ -87,7 +85,7 @@ repositories {
 
 dependencies {
 	// ...
-	testCompile('com.github.fridujo:rabbitmq-mock:1.1.1')
+	testCompile('com.github.fridujo:rabbitmq-mock:$rabbitmqMockVersion')
 	// ...
 }
 ```
