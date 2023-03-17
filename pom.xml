@@ -37,7 +37,7 @@
         <maven-gpg-plugin.version>3.0.1</maven-gpg-plugin.version>
         <nexus-staging-maven-plugin.version>1.6.13</nexus-staging-maven-plugin.version>
         <jacoco-maven-plugin.version>0.8.8</jacoco-maven-plugin.version>
-        <pitest-maven-plugin.version>1.11.4</pitest-maven-plugin.version>
+        <pitest-maven-plugin.version>1.11.5</pitest-maven-plugin.version>
     </properties>
 
     <scm>
