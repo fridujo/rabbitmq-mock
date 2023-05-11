@@ -21,7 +21,7 @@
         <scala.version>2.13</scala.version>
         <scala-library.version>2.13.9</scala-library.version>
         <akka.version>2.5.31</akka.version>
-        <alpakka.version>2.0.1</alpakka.version>
+        <alpakka.version>6.0.1</alpakka.version>
         <junit.version>5.6.2</junit.version>
         <scalatest.version>3.2.0</scalatest.version>
 
