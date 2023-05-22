@@ -31,7 +31,7 @@
         <pitest-junit5.version>1.2.0</pitest-junit5.version>
 
         <maven-javadoc-plugin.version>3.5.0</maven-javadoc-plugin.version>
-        <maven-source-plugin.version>3.2.1</maven-source-plugin.version>
+        <maven-source-plugin.version>3.3.0</maven-source-plugin.version>
         <maven-surefire-plugin.version>3.1.0</maven-surefire-plugin.version>
         <maven-invoker-plugin.version>3.5.1</maven-invoker-plugin.version>
         <maven-gpg-plugin.version>3.1.0</maven-gpg-plugin.version>
