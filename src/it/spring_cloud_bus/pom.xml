@@ -23,7 +23,7 @@
         <!--spring-cloud.version>Greenwich.M3</spring-cloud.version works with boot 2.1.1 -->
         <spring-boot.version>2.0.6.RELEASE</spring-boot.version>
         <!--spring-boot.version>2.1.1.RELEASE</spring-boot.version dependency error on some integration class-->
-        <hjson.version>3.0.0</hjson.version>
+        <hjson.version>3.0.1</hjson.version>
 
         <junit.jupiter.version>5.3.1</junit.jupiter.version>
         <maven-surefire-plugin.version>2.22.1</maven-surefire-plugin.version>
