@@ -14,8 +14,8 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
 
         <rabbitmq.client.version>5.19.0</rabbitmq.client.version>
 
@@ -181,6 +181,10 @@
                         <rabbitmq-mock.version>${project.version}</rabbitmq-mock.version>
                     </filterProperties>
                     <skipInvocation>${skipTests}</skipInvocation>
+                    <goals>
+                        <goal>dependency:tree</goal>
+                        <goal>package</goal>
+                    </goals>
                 </configuration>
                 <executions>
                     <execution>
@@ -191,14 +195,14 @@
                         <phase>integration-test</phase>
                     </execution>
                     <execution>
-                        <id>spring-boot-1.4.0</id>
+                        <id>spring-boot-2.7.0</id>
                         <goals>
                             <goal>run</goal>
                         </goals>
                         <phase>integration-test</phase>
                         <configuration>
                             <filterProperties>
-                                <spring-boot.version>1.4.0.RELEASE</spring-boot.version>
+                                <spring-boot.version>2.7.0</spring-boot.version>
                             </filterProperties>
                             <pomIncludes>
                                 <pomInclude>spring_boot/pom.xml</pomInclude>
@@ -206,14 +210,14 @@
                         </configuration>
                     </execution>
                     <execution>
-                        <id>spring-boot-1.5.0</id>
+                        <id>spring-boot-3.0.0</id>
                         <goals>
                             <goal>run</goal>
                         </goals>
                         <phase>integration-test</phase>
                         <configuration>
                             <filterProperties>
-                                <spring-boot.version>1.5.0.RELEASE</spring-boot.version>
+                                <spring-boot.version>3.0.0</spring-boot.version>
                             </filterProperties>
                             <pomIncludes>
                                 <pomInclude>spring_boot/pom.xml</pomInclude>
@@ -221,14 +225,14 @@
                         </configuration>
                     </execution>
                     <execution>
-                        <id>spring-boot-1.5.12</id>
+                        <id>spring-boot-3.1.0</id>
                         <goals>
                             <goal>run</goal>
                         </goals>
                         <phase>integration-test</phase>
                         <configuration>
                             <filterProperties>
-                                <spring-boot.version>1.5.12.RELEASE</spring-boot.version>
+                                <spring-boot.version>3.1.0</spring-boot.version>
                             </filterProperties>
                             <pomIncludes>
                                 <pomInclude>spring_boot/pom.xml</pomInclude>
@@ -236,86 +240,18 @@
                         </configuration>
                     </execution>
                     <execution>
-                        <id>spring-boot-2.0.0</id>
+                        <id>spring-cloud-bus-2021</id>
                         <goals>
                             <goal>run</goal>
                         </goals>
                         <phase>integration-test</phase>
                         <configuration>
                             <filterProperties>
-                                <spring-boot.version>2.0.0.RELEASE</spring-boot.version>
+                                <spring-cloud.version>2021.0.0</spring-cloud.version>
+                                <spring-boot.version>2.6.1</spring-boot.version>
                             </filterProperties>
-                            <pomIncludes>
-                                <pomInclude>spring_boot/pom.xml</pomInclude>
-                            </pomIncludes>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>spring-boot-2.1.0</id>
-                        <goals>
-                            <goal>run</goal>
-                        </goals>
-                        <phase>integration-test</phase>
-                        <configuration>
-                            <filterProperties>
-                                <spring-boot.version>2.1.0.RELEASE</spring-boot.version>
-                            </filterProperties>
-                            <pomIncludes>
-                                <pomInclude>spring_boot/pom.xml</pomInclude>
-                            </pomIncludes>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>spring-boot-2.2.8</id>
-                        <goals>
-                            <goal>run</goal>
-                        </goals>
-                        <phase>integration-test</phase>
-                        <configuration>
-                            <filterProperties>
-                                <spring-boot.version>2.2.8.RELEASE</spring-boot.version>
-                            </filterProperties>
-                            <pomIncludes>
-                                <pomInclude>spring_boot/pom.xml</pomInclude>
-                            </pomIncludes>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>spring-boot-2.3.1</id>
-                        <goals>
-                            <goal>run</goal>
-                        </goals>
-                        <phase>integration-test</phase>
-                        <configuration>
-                            <filterProperties>
-                                <spring-boot.version>2.3.1.RELEASE</spring-boot.version>
-                            </filterProperties>
-                            <pomIncludes>
-                                <pomInclude>spring_boot/pom.xml</pomInclude>
-                            </pomIncludes>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>spring-cloud-bus-Finchley</id>
-                        <goals>
-                            <goal>run</goal>
-                        </goals>
-                        <phase>integration-test</phase>
-                        <configuration>
                             <pomIncludes>
                                 <pomInclude>spring_cloud_bus/pom.xml</pomInclude>
-                            </pomIncludes>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>Alpakka</id>
-                        <goals>
-                            <goal>run</goal>
-                        </goals>
-                        <phase>integration-test</phase>
-                        <configuration>
-                            <pomIncludes>
-                                <pomInclude>alpakka/pom.xml</pomInclude>
                             </pomIncludes>
                         </configuration>
                     </execution>
