@@ -15,8 +15,11 @@ Mock for RabbitMQ Java [amqp-client](https://github.com/rabbitmq/rabbitmq-java-c
 
 ### Motivation
 
-This project aims to emulate RabbitMQ behavior for test purposes, through:
-* `com.rabbitmq.client.ConnectionFactory` with [`MockConnectionFactory`](src/main/java/com/github/fridujo/rabbitmq/mock/MockConnectionFactory.java)
+This project aims to emulate RabbitMQ behavior for test purposes, through `com.rabbitmq.client.ConnectionFactory` with [`MockConnectionFactory`](src/main/java/com/github/fridujo/rabbitmq/mock/MockConnectionFactory.java).
+
+However today, you will have more robust results using a real RabbitMQ instance through the use of [Testcontainers](https://java.testcontainers.org/modules/rabbitmq/).
+
+If Docker is not an acceptable option, you can still rely on **RabbitMQ-mock**.
 
 ## Example Use
 
@@ -92,9 +95,9 @@ dependencies {
 
 ### Building from Source
 
-You need [JDK-8](http://jdk.java.net/8/) to build RabbitMQ-Mock. The project can be built with Maven using the following command.
+You need [JDK-17(https://adoptium.net/temurin/releases/?version=17&package=jdk) to build RabbitMQ-Mock. The project can be built with Maven using the following command.
 ```
-mvn clean package
+./mvnw install
 ```
 
 Tests are split in:
@@ -102,14 +105,6 @@ Tests are split in:
 * **unit tests** covering features and borderline cases: `mvn test`
 * **integration tests**, seatbelts for integration with Spring and Spring-Boot. These tests use the **maven-invoker-plugin** to launch the same project (in [src/it/spring_boot](src/it/spring_boot)) with different versions of the dependencies: `mvn integration-test`
 * **mutation tests**, to help understand what is missing in test assertions: `mvn org.pitest:pitest-maven:mutationCoverage`
-
-
-### Installing in the Local Maven Repository
-
-The project can be installed in a local Maven Repository for usage in other projects via the following command.
-```
-mvn clean install
-```
 
 ### Using the latest SNAPSHOT
 
