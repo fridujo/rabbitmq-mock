@@ -101,7 +101,7 @@ class SpringIntegrationTest {
                 container.start();
                 asyncRabbitTemplate.start();
 
-                AsyncRabbitTemplate.RabbitConverterFuture<Object> result = asyncRabbitTemplate.convertSendAndReceive(EXCHANGE_NAME, "test.key2", messageBody);
+                var result = asyncRabbitTemplate.convertSendAndReceive(EXCHANGE_NAME, "test.key2", messageBody);
                 
                 assertThat(result.get()).isEqualTo(new StringBuilder(messageBody).reverse().toString());
                 assertThat(receiver.getMessages()).containsExactly(messageBody);
