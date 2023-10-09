@@ -20,7 +20,7 @@
         <rabbitmq.client.version>5.19.0</rabbitmq.client.version>
 
         <assertj.version>3.24.2</assertj.version>
-        <mockito.version>5.5.0</mockito.version>
+        <mockito.version>5.6.0</mockito.version>
         <micrometer.version>1.11.4</micrometer.version>
         <spring-rabbit.version>3.0.9</spring-rabbit.version>
         <logback.version>1.4.11</logback.version>
