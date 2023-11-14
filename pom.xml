@@ -21,7 +21,7 @@
 
         <assertj.version>3.24.2</assertj.version>
         <mockito.version>5.7.0</mockito.version>
-        <micrometer.version>1.11.5</micrometer.version>
+        <micrometer.version>1.12.0</micrometer.version>
         <spring-rabbit.version>3.0.10</spring-rabbit.version>
         <logback.version>1.4.11</logback.version>
 
