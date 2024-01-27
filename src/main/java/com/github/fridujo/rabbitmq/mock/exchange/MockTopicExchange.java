@@ -31,7 +31,7 @@ public class MockTopicExchange extends MultipleReceiverExchange {
         String bindingRegex = bindConfiguration.bindingKey
             .replace("*", "([^\\.]+)")
             .replace(".#", "(\\.(.*))?")
-            .replace("#", "(.+)");
+            .replace("#", "(.*)");
         return routingKey.matches(bindingRegex);
     }
 }
