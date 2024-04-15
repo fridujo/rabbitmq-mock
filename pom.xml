@@ -23,7 +23,7 @@
         <mockito.version>5.11.0</mockito.version>
         <micrometer.version>1.12.5</micrometer.version>
         <spring-rabbit.version>3.1.3</spring-rabbit.version>
-        <logback.version>1.5.4</logback.version>
+        <logback.version>1.5.5</logback.version>
 
         <skipTests>false</skipTests>
         <junit.jupiter.version>5.10.2</junit.jupiter.version>
