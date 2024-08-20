@@ -22,7 +22,7 @@
         <assertj.version>3.26.3</assertj.version>
         <mockito.version>5.12.0</mockito.version>
         <micrometer.version>1.13.3</micrometer.version>
-        <spring-rabbit.version>3.1.6</spring-rabbit.version>
+        <spring-rabbit.version>3.1.7</spring-rabbit.version>
         <logback.version>1.5.7</logback.version>
 
         <skipTests>false</skipTests>
