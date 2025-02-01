@@ -112,6 +112,14 @@ class ExchangeTest {
             "lazy.#, lazy.pink",
             "lazy.#, lazy.pink.rabbit",
             "some.#.key.*, some.stuff.key.1",
+            "#, ''",
+            "#, *",
+            "#, #",
+            "#, some-key",
+            "#, some.stuff.key.1",
+            "#, *.orange.*",
+            "#, lazy.#",
+            "#.key.*, some.stuff.key.1",
         })
         void binding_key_matches_routing_key(String bindingKey, String routingKey) {
             MultipleReceiverExchange topicExchange = (MultipleReceiverExchange) mockExchangeFactory.build("test", BuiltinExchangeType.TOPIC.getType(), empty(), mock(ReceiverRegistry.class));
