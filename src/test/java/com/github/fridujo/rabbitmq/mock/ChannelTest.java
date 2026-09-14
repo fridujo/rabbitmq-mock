@@ -9,8 +9,8 @@ import static org.assertj.core.api.Assertions.fail;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
@@ -744,7 +744,7 @@ class ChannelTest {
         try (Connection conn = new MockConnectionFactory().newConnection()) {
             try (Channel channel = conn.createChannel()) {
 
-                channel.queueDeclare("existingQueue", false, false, false, Collections.emptyMap()).getQueue();
+                channel.queueDeclare("existingQueue", false, false, false, Map.of()).getQueue();
                 AtomicInteger replyCodeHolder = new AtomicInteger(-1);
                 ReturnListener returnListener = (replyCode, replyText, exchange, routingKey1, properties, body) -> replyCodeHolder.set(replyCode);
                 channel.addReturnListener(returnListener);
@@ -764,7 +764,7 @@ class ChannelTest {
         try (Connection conn = new MockConnectionFactory().newConnection()) {
             try (Channel channel = conn.createChannel()) {
                 channel.exchangeDeclare("test", "direct");
-                channel.queueDeclare("existingQueue", false, false, false, Collections.emptyMap()).getQueue();
+                channel.queueDeclare("existingQueue", false, false, false, Map.of()).getQueue();
                 channel.queueBind("existingQueue", "test", "boundRoutingKey");
                 AtomicInteger replyCodeHolder = new AtomicInteger(-1);
                 ReturnCallback returnListener = r -> replyCodeHolder.set(r.getReplyCode());
@@ -829,9 +829,10 @@ class ChannelTest {
                 params.channel(channel);
                 params.exchange("");
                 params.routingKey(queue);
-                RpcClient client = new RpcClient(params);
-                RpcClient.Response response = client.responseCall("ping".getBytes());
-                assertThat(response.getBody()).isEqualTo("pong".getBytes());
+                try (RpcClient client = new RpcClient(params)) {
+                    RpcClient.Response response = client.responseCall("ping".getBytes());
+                    assertThat(response.getBody()).isEqualTo("pong".getBytes());
+                }
             }
         }
     }
@@ -845,8 +846,7 @@ class ChannelTest {
                 params.exchange("");
                 params.routingKey("unexistingQueue");
                 params.useMandatory(true);
-                RpcClient client = new RpcClient(params);
-                try {
+                try (RpcClient client = new RpcClient(params)) {
                     client.responseCall("ping".getBytes());
                     fail("Expected exception");
                 } catch (UnroutableRpcRequestException e) {
@@ -906,11 +906,11 @@ class ChannelTest {
                 MockQueue mockQueue = channel.getQueue("fruits").get();
 
                 assertThat(mockQueue.getAvailableMessages())
-                    .extracting(m -> new String(m.body))
+                    .extracting(m -> new String(m.body()))
                     .containsOnly("banana");
 
                 assertThat(mockQueue.getUnackedMessages())
-                    .extracting(m -> new String(m.body))
+                    .extracting(m -> new String(m.body()))
                     .containsOnly("orange");
             }
         }

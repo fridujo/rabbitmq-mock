@@ -2,7 +2,6 @@ package com.github.fridujo.rabbitmq.mock.exchange;
 
 import static com.github.fridujo.rabbitmq.mock.AmqArguments.empty;
 import static com.github.fridujo.rabbitmq.mock.exchange.MockExchangeCreator.creatorWithExchangeType;
-import static java.util.Collections.emptyMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
@@ -57,9 +56,9 @@ class ExchangeTest {
         })
         void binding_key_matches_routing_key(String bindingKey, String routingKey) {
             MultipleReceiverExchange directExchange = (MultipleReceiverExchange) mockExchangeFactory.build("test", BuiltinExchangeType.DIRECT.getType(), empty(), mock(ReceiverRegistry.class));
-            BindConfiguration bindConfiguration = new BindConfiguration(bindingKey, null, emptyMap());
+            BindConfiguration bindConfiguration = new BindConfiguration(bindingKey, null, Map.of());
 
-            assertThat(directExchange.match(bindConfiguration, routingKey, emptyMap())).isTrue();
+            assertThat(directExchange.match(bindConfiguration, routingKey, Map.of())).isTrue();
         }
 
         @ParameterizedTest(name = "{1} does not match {0} as direct bindingKey")
@@ -70,9 +69,9 @@ class ExchangeTest {
         })
         void binding_key_does_not_match_routing_key(String bindingKey, String routingKey) {
             MultipleReceiverExchange directExchange = (MultipleReceiverExchange) mockExchangeFactory.build("test", BuiltinExchangeType.DIRECT.getType(), empty(), mock(ReceiverRegistry.class));
-            BindConfiguration bindConfiguration = new BindConfiguration(bindingKey, null, emptyMap());
+            BindConfiguration bindConfiguration = new BindConfiguration(bindingKey, null, Map.of());
 
-            assertThat(directExchange.match(bindConfiguration, routingKey, emptyMap())).isFalse();
+            assertThat(directExchange.match(bindConfiguration, routingKey, Map.of())).isFalse();
         }
     }
 
@@ -94,9 +93,9 @@ class ExchangeTest {
         })
         void binding_key_matches_routing_key(String bindingKey, String routingKey) {
             MultipleReceiverExchange fanoutExchange = (MultipleReceiverExchange) mockExchangeFactory.build("test", BuiltinExchangeType.FANOUT.getType(), empty(), mock(ReceiverRegistry.class));
-            BindConfiguration bindConfiguration = new BindConfiguration(bindingKey, null, emptyMap());
+            BindConfiguration bindConfiguration = new BindConfiguration(bindingKey, null, Map.of());
 
-            assertThat(fanoutExchange.match(bindConfiguration, routingKey, emptyMap())).isTrue();
+            assertThat(fanoutExchange.match(bindConfiguration, routingKey, Map.of())).isTrue();
         }
     }
 
@@ -115,9 +114,9 @@ class ExchangeTest {
         })
         void binding_key_matches_routing_key(String bindingKey, String routingKey) {
             MultipleReceiverExchange topicExchange = (MultipleReceiverExchange) mockExchangeFactory.build("test", BuiltinExchangeType.TOPIC.getType(), empty(), mock(ReceiverRegistry.class));
-            BindConfiguration bindConfiguration = new BindConfiguration(bindingKey, null, emptyMap());
+            BindConfiguration bindConfiguration = new BindConfiguration(bindingKey, null, Map.of());
 
-            assertThat(topicExchange.match(bindConfiguration, routingKey, emptyMap())).isTrue();
+            assertThat(topicExchange.match(bindConfiguration, routingKey, Map.of())).isTrue();
         }
 
         @ParameterizedTest(name = "{1} does not match {0} as topic bindingKey")
@@ -136,9 +135,9 @@ class ExchangeTest {
         })
         void binding_key_does_not_match_routing_key(String bindingKey, String routingKey) {
             MultipleReceiverExchange topicExchange = (MultipleReceiverExchange) mockExchangeFactory.build("test", BuiltinExchangeType.TOPIC.getType(), empty(), mock(ReceiverRegistry.class));
-            BindConfiguration bindConfiguration = new BindConfiguration(bindingKey, null, emptyMap());
+            BindConfiguration bindConfiguration = new BindConfiguration(bindingKey, null, Map.of());
 
-            assertThat(topicExchange.match(bindConfiguration, routingKey, emptyMap())).isFalse();
+            assertThat(topicExchange.match(bindConfiguration, routingKey, Map.of())).isFalse();
         }
     }
 

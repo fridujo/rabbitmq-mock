@@ -62,13 +62,13 @@ public class ImplementedMetricsCollectorWrapper implements MetricsCollectorWrapp
     }
 
     @Override
-    public void basicNack(Channel channel, long deliveryTag) {
-        mc().basicNack(channel, deliveryTag);
+    public void basicNack(Channel channel, long deliveryTag, boolean requeue) {
+        mc().basicNack(channel, deliveryTag, requeue);
     }
 
     @Override
-    public void basicReject(Channel channel, long deliveryTag) {
-        mc().basicReject(channel, deliveryTag);
+    public void basicReject(Channel channel, long deliveryTag, boolean requeue) {
+        mc().basicReject(channel, deliveryTag, requeue);
     }
 
     @Override

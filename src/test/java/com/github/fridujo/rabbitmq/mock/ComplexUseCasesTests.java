@@ -7,8 +7,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -223,7 +223,7 @@ class ComplexUseCasesTests {
                     .forEach(message -> channel.basicPublish("", queueName, null, message.getBytes()));
 
                 Semaphore deliveries = new Semaphore(-2);
-                String consumerTag = channel.basicConsume(queueName, false, Collections.emptyMap(), new DefaultConsumer(channel) {
+                String consumerTag = channel.basicConsume(queueName, false, Map.of(), new DefaultConsumer(channel) {
                     @Override
                     public void handleDelivery(String consumerTag,
                                                Envelope envelope,
@@ -242,7 +242,7 @@ class ComplexUseCasesTests {
 
                 List<String> messages = new ArrayList<>();
                 Semaphore deliveriesRoundTwo = new Semaphore(-1);
-                channel.basicConsume(queueName, false, Collections.emptyMap(), new DefaultConsumer(channel) {
+                channel.basicConsume(queueName, false, Map.of(), new DefaultConsumer(channel) {
                     @Override
                     public void handleDelivery(String consumerTag,
                                                Envelope envelope,

@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -57,7 +58,7 @@ public class MetricsCollectorTest {
         mockConnectionFactory.setMetricsCollector(new MicrometerMetricsCollector(registry));
 
         try (MockConnection connection = mockConnectionFactory.newConnection();
-             Channel channel = connection.createChannel(42)) {
+            Channel channel = connection.createChannel(42)) {
             assertThat(registry.get("rabbitmq.published").counter().count()).isEqualTo(0);
             channel.basicPublish("", "", null, "".getBytes());
             assertThat(registry.get("rabbitmq.published").counter().count()).isEqualTo(1);
@@ -71,7 +72,7 @@ public class MetricsCollectorTest {
         mockConnectionFactory.setMetricsCollector(new MicrometerMetricsCollector(registry));
 
         try (MockConnection connection = mockConnectionFactory.newConnection();
-             Channel channel = connection.createChannel(42)) {
+            Channel channel = connection.createChannel(42)) {
             String queueName = channel.queueDeclare().getQueue();
             channel.basicPublish("", queueName, null, "".getBytes());
 
@@ -88,7 +89,7 @@ public class MetricsCollectorTest {
         mockConnectionFactory.setMetricsCollector(new MicrometerMetricsCollector(registry));
 
         try (MockConnection connection = mockConnectionFactory.newConnection();
-             Channel channel = connection.createChannel(42)) {
+            Channel channel = connection.createChannel(42)) {
             String queueName = channel.queueDeclare().getQueue();
             channel.basicPublish("", queueName, null, "".getBytes());
             GetResponse getResponse = channel.basicGet(queueName, false);
@@ -106,7 +107,7 @@ public class MetricsCollectorTest {
         mockConnectionFactory.setMetricsCollector(new MicrometerMetricsCollector(registry));
 
         try (MockConnection connection = mockConnectionFactory.newConnection();
-             Channel channel = connection.createChannel(42)) {
+            Channel channel = connection.createChannel(42)) {
             String queueName = channel.queueDeclare().getQueue();
             channel.basicPublish("", queueName, null, "".getBytes());
             GetResponse getResponse = channel.basicGet(queueName, false);
@@ -124,7 +125,7 @@ public class MetricsCollectorTest {
         mockConnectionFactory.setMetricsCollector(new MicrometerMetricsCollector(registry));
 
         try (MockConnection connection = mockConnectionFactory.newConnection();
-             Channel channel = connection.createChannel(42)) {
+            Channel channel = connection.createChannel(42)) {
             String queueName = channel.queueDeclare().getQueue();
             channel.basicPublish("", queueName, null, "".getBytes());
             GetResponse getResponse = channel.basicGet(queueName, false);
@@ -144,7 +145,7 @@ public class MetricsCollectorTest {
         Supplier<Double> publishedMessagesCounter = () -> registry.get("rabbitmq.consumed").counter().count();
 
         try (MockConnection connection = mockConnectionFactory.newConnection();
-             Channel channel = connection.createChannel(42)) {
+            Channel channel = connection.createChannel(42)) {
             String queueName = channel.queueDeclare().getQueue();
             final AtomicBoolean counterIncrementedBeforeHandleDelivery = new AtomicBoolean();
             channel.basicConsume("", new DefaultConsumer(channel) {
@@ -188,7 +189,8 @@ public class MetricsCollectorTest {
         SimpleMeterRegistry registry = new SimpleMeterRegistry();
 
         try (MockConnection connection = mockConnectionFactory.newConnection();
-             Channel channel = connection.createChannel(42)) {
+            Channel channel = connection.createChannel(42)) {
+            connection.setId(UUID.randomUUID().toString());
 
             mockConnectionFactory.setMetricsCollector(new MicrometerMetricsCollector(registry));
 
@@ -206,8 +208,8 @@ public class MetricsCollectorTest {
         final AtomicBoolean counterIncrementedBeforeHandleDelivery = new AtomicBoolean();
 
         try (MockConnection connection = mockConnectionFactory.newConnection();
-             Channel queueCreatingChannel = connection.createChannel();
-             Channel queueMutatingChannel = connection.createChannel()) {
+            Channel queueCreatingChannel = connection.createChannel();
+            Channel queueMutatingChannel = connection.createChannel()) {
 
             String queueName = queueCreatingChannel.queueDeclare().getQueue();
 

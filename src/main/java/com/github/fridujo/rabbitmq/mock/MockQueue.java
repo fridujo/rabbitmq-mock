@@ -39,7 +39,7 @@ public class MockQueue implements Receiver {
     private final String name;
     private final ReceiverPointer pointer;
     private final AmqArguments arguments;
-    private final ReceiverRegistry receiverRegistry;
+    protected final ReceiverRegistry receiverRegistry;
     private final Queue<Message> messages;
     private final RestartableExecutorService executorService;
     private final Map<String, ConsumerAndTag> consumersByTag = Collections.synchronizedMap(new LinkedHashMap<>());
@@ -77,52 +77,54 @@ public class MockQueue implements Receiver {
             LOGGER.debug(localized("shutting down"));
             return false;
         }
-        boolean delivered = false;
 
-        delivered = deadLetterFirstMessageIfExpired();
+        boolean delivered = deadLetterFirstMessageIfExpired();
 
         if (consumersByTag.size() > 0) {
             Message message = messages.poll();
-            if (message != null) {
-                if (message.isExpired()) {
-                    deadLetterWithReason(message, DeadLettering.ReasonType.EXPIRED);
-                } else {
-                    List<ConsumerAndTag> consumerAndTags = new ArrayList<>(consumersByTag.size());
-
-                    consumersByTag.values().forEach(consumerAndTags::add);  // iterates while synchronized
-
-                    int index = consumerRollingSequence.incrementAndGet() % consumerAndTags.size();
-                    ConsumerAndTag nextConsumer = consumerAndTags.get(index);
-                    long deliveryTag = nextConsumer.deliveryTagSupplier.get();
-
-                    unackedMessagesByDeliveryTag.put(deliveryTag, message);
-                    unackedDeliveryTagsByConsumerTag.compute(nextConsumer.tag, (k, v) -> {  // manipulate the map, and its contained set while synchronized
-                        Set<Long> set = v == null ? new LinkedHashSet<>() : v;
-
-                        set.add(deliveryTag);
-
-                        return set;
-                    });
-
-                    Envelope envelope = new Envelope(deliveryTag,
-                        message.redelivered,
-                        message.exchangeName,
-                        message.routingKey);
-                    try {
-                        LOGGER.debug(localized("delivering message to consumer"));
-                        nextConsumer.mockChannel.getMetricsCollector().consumedMessage(nextConsumer.mockChannel, deliveryTag, nextConsumer.tag);
-                        nextConsumer.consumer.handleDelivery(nextConsumer.tag, envelope, message.props, message.body);
-                        if (nextConsumer.autoAck) {
-                            internal_removeFromUnacked(deliveryTag);
-                        }
-                        delivered = true;
-                    } catch (IOException e) {
-                        LOGGER.warn(localized("Unable to deliver message to consumer [" + nextConsumer.tag + "]"));
-                        basicReject(deliveryTag, true);
-                    }
-                }
+            if (message == null) {
+                LOGGER.trace(localized("no messages to deliver to consumer"));
+            } else if (message.isExpired()) {
+                deadLetterWithReason(message, DeadLettering.ReasonType.EXPIRED);
             } else {
-                LOGGER.trace(localized("no consumer to deliver message to"));
+                List<ConsumerAndTag> consumerAndTags = new ArrayList<>(consumersByTag.size());
+
+                consumersByTag.values().forEach(consumerAndTags::add);  // iterates while synchronized
+
+                int index = consumerRollingSequence.incrementAndGet() % consumerAndTags.size();
+                ConsumerAndTag nextConsumer = consumerAndTags.get(index);
+                long deliveryTag = nextConsumer.deliveryTagSupplier().get();
+
+                unackedMessagesByDeliveryTag.put(deliveryTag, message);
+                unackedDeliveryTagsByConsumerTag.compute(nextConsumer.tag(), (k, v) -> {  // manipulate the map, and its contained set while synchronized
+                    Set<Long> set = v == null ? new LinkedHashSet<>() : v;
+
+                    set.add(deliveryTag);
+
+                    return set;
+                });
+
+                Envelope envelope = new Envelope(deliveryTag,
+                    message.redelivered(),
+                    message.exchangeName(),
+                    message.routingKey());
+                try {
+                    LOGGER.debug(localized("delivering message to consumer"));
+                    nextConsumer.mockChannel().getMetricsCollector().consumedMessage(nextConsumer.mockChannel(), deliveryTag, nextConsumer.tag());
+                    nextConsumer.consumer().handleDelivery(nextConsumer.tag(), envelope, message.props(), message.body());
+                    if (nextConsumer.autoAck()) {
+                        internal_removeFromUnacked(deliveryTag);
+                    }
+                    delivered = true;
+                } catch (IOException e) {
+                    LOGGER.warn(localized("Unable to deliver message to consumer [" + nextConsumer.tag() + "]"));
+                    basicReject(deliveryTag, true);
+                    delivered = false;
+                } catch (RuntimeException e) {
+                    LOGGER.warn(localized("Unable to deliver message to consumer [" + nextConsumer.tag() + "]"));
+                    basicReject(deliveryTag, true);
+                    delivered = false;
+                }
             }
         }
         return delivered;
@@ -153,8 +155,8 @@ public class MockQueue implements Receiver {
             body,
             computeExpiryTime(props)
         );
-        if (message.expiryTime != -1) {
-            LOGGER.debug(localized("Message published expiring at " + Instant.ofEpochMilli(message.expiryTime)) + ": " + message);
+        if (message.expiryTime() != -1) {
+            LOGGER.debug(localized("Message published expiring at " + Instant.ofEpochMilli(message.expiryTime())) + ": " + message);
         } else {
             LOGGER.debug(localized("Message published" + ": " + message));
         }
@@ -170,9 +172,12 @@ public class MockQueue implements Receiver {
         return pointer;
     }
 
-    public void basicConsume(String consumerTag, Consumer consumer, boolean autoAck, Supplier<Long> deliveryTagSupplier, MockConnection mockConnection, MockChannel mockChannel) {
+    public void basicConsume(String consumerTag, Consumer consumer, boolean autoAck, Supplier<Long> deliveryTagSupplier, MockChannel mockChannel) {
         LOGGER.debug(localized("registering consumer"));
-        consumersByTag.put(consumerTag, new ConsumerAndTag(consumerTag, consumer, autoAck, deliveryTagSupplier, mockConnection, mockChannel));
+        consumersByTag.put(consumerTag, new ConsumerAndTag(consumerTag, consumer, autoAck, deliveryTagSupplier, mockChannel));
+        if (mockChannel.isOpen()) {
+            restartDeliveryLoop();
+        }
         consumer.handleConsumeOk(consumerTag);
     }
 
@@ -190,13 +195,13 @@ public class MockQueue implements Receiver {
                 Envelope envelope = new Envelope(
                     deliveryTag,
                     false,
-                    message.exchangeName,
-                    message.routingKey);
+                    message.exchangeName(),
+                    message.routingKey());
                 LOGGER.debug(localized("basic_get a message"));
                 return new GetResponse(
                     envelope,
-                    message.props,
-                    message.body,
+                    message.props(),
+                    message.body(),
                     messages.size());
             }
         } else {
@@ -248,13 +253,13 @@ public class MockQueue implements Receiver {
         ConsumerAndTag removed = consumersByTag.remove(consumerTag);
 
         if (removed != null) {
-            Consumer consumer = removed.consumer;
+            Consumer consumer = removed.consumer();
             consumer.handleCancelOk(consumerTag);
 
             List<Long> unackedDeliveryTags;
 
             synchronized(unackedDeliveryTagsByConsumerTag) {  // protects also the nested consumer tag set
-                unackedDeliveryTags = new ArrayList<>(unackedDeliveryTagsByConsumerTag.computeIfAbsent(consumerTag, k -> Collections.emptySet()));
+                unackedDeliveryTags = new ArrayList<>(unackedDeliveryTagsByConsumerTag.computeIfAbsent(consumerTag, k -> Set.of()));
             }
 
             unackedDeliveryTags.forEach(deliveryTag -> basicReject(deliveryTag, true));
@@ -275,7 +280,7 @@ public class MockQueue implements Receiver {
 
     void close(MockConnection mockConnection) {
         consumersByTag.entrySet().removeIf(e -> {
-            final boolean mustCancelConsumer = e.getValue().mockConnection == mockConnection;
+            final boolean mustCancelConsumer = e.getValue().mockChannel().getConnection() == mockConnection;
             if (mustCancelConsumer) {
                 cancel(e.getValue());
             }
@@ -313,7 +318,7 @@ public class MockQueue implements Receiver {
 
     private void cancel(ConsumerAndTag consumerAndTag) {
         try {
-            consumerAndTag.consumer.handleCancel(consumerAndTag.tag);
+            consumerAndTag.consumer().handleCancel(consumerAndTag.tag());
         } catch (IOException e) {
             LOGGER.warn("Consumer threw an exception when notified about cancellation", e);
         }
@@ -327,7 +332,7 @@ public class MockQueue implements Receiver {
         unackedDeliveryTags.forEach(unackedDeliveryTag -> messages.offer(internal_removeFromUnacked(unackedDeliveryTag)));
 
         synchronized(consumersByTag) {
-            consumersByTag.values().forEach(consumerAndTag -> consumerAndTag.consumer.handleRecoverOk(consumerAndTag.tag));
+            consumersByTag.values().forEach(consumerAndTag -> consumerAndTag.consumer().handleRecoverOk(consumerAndTag.tag));
         }
     }
 
@@ -369,7 +374,7 @@ public class MockQueue implements Receiver {
     }
 
     private boolean queueLengthBytesLimitReached() {
-        int messageBytesReady = messages.stream().mapToInt(m -> m.body.length).sum();
+        int messageBytesReady = messages.stream().mapToInt(m -> m.body().length).sum();
         return arguments.queueLengthBytesLimit()
             .map(limit -> limit <= messageBytesReady)
             .orElse(false);
@@ -412,12 +417,12 @@ public class MockQueue implements Receiver {
             .ifPresent(deadLetterExchange -> {
                     LOGGER.debug(localized("dead-lettered to " + deadLetterExchange + ": " + message));
                     DeadLettering.Event event = new DeadLettering.Event(name, reason, message, 1);
-                    BasicProperties props = event.prependOn(message.props);
+                    BasicProperties props = event.prependOn(message.props());
                     deadLetterExchange.publish(
-                        message.exchangeName,
-                        arguments.getDeadLetterRoutingKey().orElse(message.routingKey),
+                        message.exchangeName(),
+                        arguments.getDeadLetterRoutingKey().orElse(message.routingKey()),
                         props,
-                        message.body);
+                        message.body());
                 }
             );
     }
@@ -434,22 +439,6 @@ public class MockQueue implements Receiver {
         return unackedMessages;
     }
 
-    static class ConsumerAndTag {
+    static record ConsumerAndTag(String tag, Consumer consumer, boolean autoAck, Supplier<Long> deliveryTagSupplier, MockChannel mockChannel) {}
 
-        private final String tag;
-        private final Consumer consumer;
-        private final boolean autoAck;
-        private final Supplier<Long> deliveryTagSupplier;
-        private final MockConnection mockConnection;
-        private final MockChannel mockChannel;
-
-        ConsumerAndTag(String tag, Consumer consumer, boolean autoAck, Supplier<Long> deliveryTagSupplier, MockConnection mockConnection, MockChannel mockChannel) {
-            this.tag = tag;
-            this.consumer = consumer;
-            this.autoAck = autoAck;
-            this.deliveryTagSupplier = deliveryTagSupplier;
-            this.mockConnection = mockConnection;
-            this.mockChannel = mockChannel;
-        }
-    }
 }

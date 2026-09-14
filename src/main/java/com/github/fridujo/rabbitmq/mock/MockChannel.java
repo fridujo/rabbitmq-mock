@@ -1,7 +1,6 @@
 package com.github.fridujo.rabbitmq.mock;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -65,7 +64,7 @@ public class MockChannel implements Channel {
         
         this.directReplyToQueue = 
             node
-                .queueDeclare(generateIfEmpty(""),false, true, true, Collections.emptyMap())
+                .queueDeclare(generateIfEmpty(""), false, true, true, Map.of(), this)
                 .getQueue();
 
         metricsCollectorWrapper.newChannel(this);
@@ -207,7 +206,7 @@ public class MockChannel implements Channel {
 
     @Override
     public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, String type) throws IOException {
-        return exchangeDeclare(exchange, type, false, true, false, Collections.emptyMap());
+        return exchangeDeclare(exchange, type, false, true, false, Map.of());
     }
 
     @Override
@@ -217,12 +216,12 @@ public class MockChannel implements Channel {
 
     @Override
     public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, String type, boolean durable) throws IOException {
-        return exchangeDeclare(exchange, type, durable, true, Collections.emptyMap());
+        return exchangeDeclare(exchange, type, durable, true, Map.of());
     }
 
     @Override
     public AMQP.Exchange.DeclareOk exchangeDeclare(String exchange, BuiltinExchangeType type, boolean durable) throws IOException {
-        return exchangeDeclare(exchange, type, durable, true, Collections.emptyMap());
+        return exchangeDeclare(exchange, type, durable, true, Map.of());
     }
 
     @Override
@@ -284,7 +283,7 @@ public class MockChannel implements Channel {
 
     @Override
     public AMQP.Exchange.BindOk exchangeBind(String destination, String source, String routingKey) {
-        return exchangeBind(destination, source, routingKey, Collections.emptyMap());
+        return exchangeBind(destination, source, routingKey, Map.of());
     }
 
     @Override
@@ -299,7 +298,7 @@ public class MockChannel implements Channel {
 
     @Override
     public AMQP.Exchange.UnbindOk exchangeUnbind(String destination, String source, String routingKey) {
-        return exchangeUnbind(destination, source, routingKey, Collections.emptyMap());
+        return exchangeUnbind(destination, source, routingKey, Map.of());
     }
 
     @Override
@@ -314,12 +313,12 @@ public class MockChannel implements Channel {
 
     @Override
     public AMQP.Queue.DeclareOk queueDeclare() {
-        return queueDeclare("", false, true, true, Collections.emptyMap());
+        return queueDeclare("", false, true, true, Map.of());
     }
 
     @Override
     public AMQP.Queue.DeclareOk queueDeclare(String queue, boolean durable, boolean exclusive, boolean autoDelete, Map<String, Object> arguments) {
-        return node.queueDeclare(generateIfEmpty(queue), durable, exclusive, autoDelete, nullToEmpty(arguments));
+        return node.queueDeclare(generateIfEmpty(queue), durable, exclusive, autoDelete, nullToEmpty(arguments), this);
     }
 
     @Override
@@ -357,7 +356,7 @@ public class MockChannel implements Channel {
 
     @Override
     public AMQP.Queue.BindOk queueBind(String queue, String exchange, String routingKey) {
-        return queueBind(queue, exchange, routingKey, Collections.emptyMap());
+        return queueBind(queue, exchange, routingKey, Map.of());
     }
 
     @Override
@@ -372,7 +371,7 @@ public class MockChannel implements Channel {
 
     @Override
     public AMQP.Queue.UnbindOk queueUnbind(String queue, String exchange, String routingKey) {
-        return queueUnbind(queue, exchange, routingKey, Collections.emptyMap());
+        return queueUnbind(queue, exchange, routingKey, Map.of());
     }
 
     @Override
@@ -394,7 +393,7 @@ public class MockChannel implements Channel {
                 throw new IllegalStateException("direct reply-to requires autoAck");
             }
         }
-        
+
         GetResponse getResponse = node.basicGet(lastGeneratedIfEmpty(queue), autoAck, this::nextDeliveryTag);
         if (getResponse != null) {
             metricsCollectorWrapper.consumedMessage(this, getResponse.getEnvelope().getDeliveryTag(), autoAck);
@@ -411,13 +410,13 @@ public class MockChannel implements Channel {
     @Override
     public void basicNack(long deliveryTag, boolean multiple, boolean requeue) {
         getTransactionOrNode().basicNack(deliveryTag, multiple, requeue);
-        metricsCollectorWrapper.basicNack(this, deliveryTag);
+        metricsCollectorWrapper.basicNack(this, deliveryTag, requeue);
     }
 
     @Override
     public void basicReject(long deliveryTag, boolean requeue) {
         getTransactionOrNode().basicReject(deliveryTag, requeue);
-        metricsCollectorWrapper.basicReject(this, deliveryTag);
+        metricsCollectorWrapper.basicReject(this, deliveryTag, requeue);
     }
 
     @Override
@@ -442,22 +441,22 @@ public class MockChannel implements Channel {
 
     @Override
     public String basicConsume(String queue, boolean autoAck, Consumer callback) {
-        return basicConsume(queue, autoAck, Collections.emptyMap(), callback);
+        return basicConsume(queue, autoAck, Map.of(), callback);
     }
 
     @Override
     public String basicConsume(String queue, boolean autoAck, DeliverCallback deliverCallback, CancelCallback cancelCallback) {
-        return basicConsume(queue, autoAck, Collections.emptyMap(), deliverCallback, cancelCallback);
+        return basicConsume(queue, autoAck, Map.of(), deliverCallback, cancelCallback);
     }
 
     @Override
     public String basicConsume(String queue, boolean autoAck, DeliverCallback deliverCallback, ConsumerShutdownSignalCallback shutdownSignalCallback) {
-        return basicConsume(queue, autoAck, Collections.emptyMap(), deliverCallback, shutdownSignalCallback);
+        return basicConsume(queue, autoAck, Map.of(), deliverCallback, shutdownSignalCallback);
     }
 
     @Override
     public String basicConsume(String queue, boolean autoAck, DeliverCallback deliverCallback, CancelCallback cancelCallback, ConsumerShutdownSignalCallback shutdownSignalCallback) {
-        return basicConsume(queue, autoAck, Collections.emptyMap(), deliverCallback, cancelCallback, shutdownSignalCallback);
+        return basicConsume(queue, autoAck, Map.of(), deliverCallback, cancelCallback, shutdownSignalCallback);
     }
 
     @Override
@@ -482,7 +481,7 @@ public class MockChannel implements Channel {
 
     @Override
     public String basicConsume(String queue, boolean autoAck, String consumerTag, Consumer callback) {
-        return basicConsume(queue, autoAck, consumerTag, false, false, Collections.emptyMap(), callback);
+        return basicConsume(queue, autoAck, consumerTag, false, false, Map.of(), callback);
     }
 
     @Override
@@ -497,7 +496,7 @@ public class MockChannel implements Channel {
 
     @Override
     public String basicConsume(String queue, boolean autoAck, String consumerTag, DeliverCallback deliverCallback, CancelCallback cancelCallback, ConsumerShutdownSignalCallback shutdownSignalCallback) {
-        return basicConsume(queue, autoAck, consumerTag, false, false, Collections.emptyMap(), deliverCallback, cancelCallback, shutdownSignalCallback);
+        return basicConsume(queue, autoAck, consumerTag, false, false, Map.of(), deliverCallback, cancelCallback, shutdownSignalCallback);
     }
 
     @Override
@@ -509,7 +508,7 @@ public class MockChannel implements Channel {
                 throw new IllegalStateException("direct reply-to requires autoAck");
             }
         }
-        String serverConsumerTag = node.basicConsume(lastGeneratedIfEmpty(queue), autoAck, consumerTag, noLocal, exclusive, nullToEmpty(arguments), callback, this::nextDeliveryTag, mockConnection, this);
+        String serverConsumerTag = node.basicConsume(lastGeneratedIfEmpty(queue), autoAck, consumerTag, noLocal, exclusive, nullToEmpty(arguments), callback, this::nextDeliveryTag, this);
         metricsCollectorWrapper.basicConsume(this, serverConsumerTag, autoAck);
         return serverConsumerTag;
     }
@@ -671,7 +670,7 @@ public class MockChannel implements Channel {
     }
 
     private Map<String, Object> nullToEmpty(Map<String, Object> arguments) {
-        return arguments != null ? arguments : Collections.emptyMap();
+        return arguments != null ? arguments : Map.of();
     }
 
     private String generateIfEmpty(String queue) {

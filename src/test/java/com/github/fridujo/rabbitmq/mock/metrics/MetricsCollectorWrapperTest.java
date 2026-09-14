@@ -46,8 +46,8 @@ class MetricsCollectorWrapperTest {
             dynamicTest("consumedMessage", () -> metricsCollectorWrapper.consumedMessage(null, 0L, true)),
             dynamicTest("consumedMessage (consumerTag)", () -> metricsCollectorWrapper.consumedMessage(null, 0L, null)),
             dynamicTest("basicAck", () -> metricsCollectorWrapper.basicAck(null, 0L, true)),
-            dynamicTest("basicNack", () -> metricsCollectorWrapper.basicNack(null, 0L)),
-            dynamicTest("basicReject", () -> metricsCollectorWrapper.basicReject(null, 0L)),
+            dynamicTest("basicNack", () -> metricsCollectorWrapper.basicNack(null, 0L, false)),
+            dynamicTest("basicReject", () -> metricsCollectorWrapper.basicReject(null, 0L, false)),
             dynamicTest("basicConsume", () -> metricsCollectorWrapper.basicConsume(null, null, true)),
             dynamicTest("basicCancel", () -> metricsCollectorWrapper.basicCancel(null, null))
         );

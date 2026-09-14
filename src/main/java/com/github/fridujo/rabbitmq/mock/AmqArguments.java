@@ -1,7 +1,5 @@
 package com.github.fridujo.rabbitmq.mock;
 
-import static java.util.Collections.emptyMap;
-
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
@@ -18,7 +16,7 @@ public class AmqArguments {
     private final Map<String, Object> arguments;
 
     public static AmqArguments empty() {
-        return new AmqArguments(emptyMap());
+        return new AmqArguments(Map.of());
     }
 
     public AmqArguments(Map<String, Object> arguments) {

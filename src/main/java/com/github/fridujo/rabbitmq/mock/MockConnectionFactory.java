@@ -2,7 +2,6 @@ package com.github.fridujo.rabbitmq.mock;
 
 import com.github.fridujo.rabbitmq.mock.metrics.MetricsCollectorWrapper;
 import com.rabbitmq.client.AddressResolver;
-import com.rabbitmq.client.ConnectionFactory;
 
 import java.util.concurrent.ExecutorService;
 

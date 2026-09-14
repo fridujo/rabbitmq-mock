@@ -45,12 +45,12 @@ public class NoopMetricsCollectorWrapper implements MetricsCollectorWrapper {
     }
 
     @Override
-    public void basicNack(Channel channel, long deliveryTag) {
+    public void basicNack(Channel channel, long deliveryTag, boolean requeue) {
         // no implementation
     }
 
     @Override
-    public void basicReject(Channel channel, long deliveryTag) {
+    public void basicReject(Channel channel, long deliveryTag, boolean requeue) {
         // no implementation
     }
 

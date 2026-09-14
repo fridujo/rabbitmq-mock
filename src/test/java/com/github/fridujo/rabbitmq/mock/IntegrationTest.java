@@ -158,7 +158,7 @@ class IntegrationTest {
             CountDownLatch messagesToBeProcessed = new CountDownLatch(2);
             try (Channel channel = conn.createChannel()) {
                 queue("fruits").declare(channel);
-                AtomicReference<Envelope> redeliveredMessageEnvelope = new AtomicReference();
+                AtomicReference<Envelope> redeliveredMessageEnvelope = new AtomicReference<>();
 
                 channel.basicConsume("fruits", new DefaultConsumer(channel) {
                     @Override

@@ -2,8 +2,13 @@ package com.github.fridujo.rabbitmq.mock;
 
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.AlreadyClosedException;
+import com.rabbitmq.client.BuiltinExchangeType;
+import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.Consumer;
+import com.rabbitmq.client.DefaultConsumer;
+import com.rabbitmq.client.Envelope;
 import com.rabbitmq.client.impl.AMQConnection;
 import com.rabbitmq.client.impl.DefaultExceptionHandler;
 import com.rabbitmq.client.impl.LongStringHelper;
@@ -12,10 +17,18 @@ import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class MockConnectionTest {
 
@@ -109,4 +122,137 @@ class MockConnectionTest {
                 .isThrownBy(() -> connection.notifyListeners());
         }
     }
+
+    private static final String EXCHANGE = "exchange";
+    private static final String QUEUE = "queue";
+
+    @Test
+    void exclusive_queue_cleanup() throws Exception {
+        MockConnectionFactory factory = new MockConnectionFactory();
+
+        try (Connection conn = factory.newConnection()) {
+            createQueueAndPublish(conn, true);
+        }
+
+        try (Connection conn2 = factory.newConnection()) {
+            assertThrows(IllegalArgumentException.class, () -> {
+                readFromQueue(conn2);
+            });
+        }
+    }
+
+    @Test
+    void autoDelete_queue_cleanup() throws Exception {
+        MockConnectionFactory factory = new MockConnectionFactory();
+
+        try (Connection conn = factory.newConnection()) {
+            createQueueAndPublish(conn, false);
+            BlockingQueue<String> queue = readFromQueue(conn);
+            queue.poll(1000, TimeUnit.MILLISECONDS);
+        }
+
+        try (Connection conn2 = factory.newConnection()) {
+            assertThrows(IllegalArgumentException.class, () -> {
+                readFromQueue(conn2);
+            });
+        }
+    }
+
+    @Test
+    void multiConnection_overlapping() throws Exception {
+        MockConnectionFactory factory = new MockConnectionFactory();
+
+        Connection conn = factory.newConnection();
+
+        try (Connection conn2 = factory.newConnection()) {
+            createQueueAndPublish(conn2, false);
+        }
+
+        BlockingQueue<String> queue = readFromQueue(conn);
+        assertNotNull(queue.poll(1000, TimeUnit.MILLISECONDS));
+    }
+
+    @Test
+    void multiConnection_sequential() throws Exception {
+        MockConnectionFactory factory = new MockConnectionFactory();
+
+        try (Connection conn = factory.newConnection()) {
+            createQueueAndPublish(conn, false);
+        }
+
+        try (Connection conn2 = factory.newConnection()) {
+            BlockingQueue<String> queue = readFromQueue(conn2);
+            assertNotNull(queue.poll(1000, TimeUnit.MILLISECONDS));
+        }
+    }
+
+    @Test
+    void singleConnection() throws Exception {
+        MockConnectionFactory factory = new MockConnectionFactory();
+
+        try (Connection conn = factory.newConnection()) {
+            createQueueAndPublish(conn, false);
+
+            BlockingQueue<String> queue = readFromQueue(conn);
+            assertNotNull(queue.poll(1000, TimeUnit.MILLISECONDS));
+        }
+    }
+
+    private void createQueueAndPublish(Connection conn, boolean exclusive) throws IOException {
+        Channel channel = conn.createChannel();
+
+        channel.exchangeDeclare(EXCHANGE, BuiltinExchangeType.DIRECT, true);
+        channel.queueDeclare(QUEUE, false, exclusive, true, Map.of());
+        channel.queueBind(QUEUE, EXCHANGE, "");
+
+        channel.basicPublish(EXCHANGE, "", new AMQP.BasicProperties(), "hello".getBytes());
+    }
+
+    @Test
+    void throwKillsConsumer() throws Exception {
+        MockConnectionFactory factory = new MockConnectionFactory();
+
+        try (Connection conn = factory.newConnection()) {
+            Channel channel = conn.createChannel();
+
+            channel.exchangeDeclare(EXCHANGE, BuiltinExchangeType.DIRECT, true);
+            channel.queueDeclare(QUEUE, false, true, true, Map.of());
+            channel.queueBind(QUEUE, EXCHANGE, "");
+
+            channel.basicPublish(EXCHANGE, "", new AMQP.BasicProperties(), "throw".getBytes());
+            channel.basicPublish(EXCHANGE, "", new AMQP.BasicProperties(), "complete".getBytes());
+
+            BlockingQueue<String> queue = readFromQueue(conn);
+            assertEquals("throw", queue.poll(1000, TimeUnit.MILLISECONDS)); // nack'ed message
+            assertEquals("throw", queue.poll(1000, TimeUnit.MILLISECONDS)); // requeue'ed message
+            assertEquals("complete", queue.poll(1000, TimeUnit.MILLISECONDS)); // next message
+        }
+    }
+
+    private BlockingQueue<String> readFromQueue(Connection conn) throws IOException {
+        Channel channel = conn.createChannel();
+        BlockingQueue<String> queue = new ArrayBlockingQueue<String>(3);
+
+        Consumer consumer = new DefaultConsumer(channel) {
+            boolean throwUpOnce = true;
+
+            @Override
+            public void handleDelivery(String consumerTag,
+                                       Envelope envelope,
+                                       AMQP.BasicProperties properties,
+                                       byte[] body) throws IOException {
+                try {
+                    queue.put(new String(body));
+                } catch (InterruptedException e) {}
+
+                if (throwUpOnce && new String(body).equals("throw")) {
+                    throwUpOnce = false;
+                    throw new RuntimeException("oops");
+                }
+            }
+        };
+
+        channel.basicConsume(QUEUE, true, consumer);
+        return queue;
+    }    
 }

@@ -37,7 +37,7 @@ public class MockNode implements ReceiverRegistry, TransactionalOperations {
         return exchange.publish(null, routingKey, props, body);
     }
 
-    public String basicConsume(String queueName, boolean autoAck, String consumerTag, boolean noLocal, boolean exclusive, Map<String, Object> arguments, Consumer callback, Supplier<Long> deliveryTagSupplier, MockConnection mockConnection, MockChannel mockChannel) {
+    public String basicConsume(String queueName, boolean autoAck, String consumerTag, boolean noLocal, boolean exclusive, Map<String, Object> arguments, Consumer callback, Supplier<Long> deliveryTagSupplier, MockChannel mockChannel) {
         final String definitiveConsumerTag;
         if ("".equals(consumerTag)) {
             definitiveConsumerTag = consumerTagGenerator.generate();
@@ -45,7 +45,7 @@ public class MockNode implements ReceiverRegistry, TransactionalOperations {
             definitiveConsumerTag = consumerTag;
         }
 
-        getQueueUnchecked(queueName).basicConsume(definitiveConsumerTag, callback, autoAck, deliveryTagSupplier, mockConnection, mockChannel);
+        getQueueUnchecked(queueName).basicConsume(definitiveConsumerTag, callback, autoAck, deliveryTagSupplier, mockChannel);
 
         return definitiveConsumerTag;
     }
@@ -78,16 +78,20 @@ public class MockNode implements ReceiverRegistry, TransactionalOperations {
         return new AMQImpl.Exchange.UnbindOk();
     }
 
-    public AMQP.Queue.DeclareOk queueDeclare(String queueName, boolean durable, boolean exclusive, boolean autoDelete, Map<String, Object> arguments) {
-        queues.putIfAbsent(queueName, new MockQueue(queueName, new AmqArguments(arguments), this));
+    public AMQP.Queue.DeclareOk queueDeclare(String queueName, boolean durable, boolean exclusive, boolean autoDelete, Map<String, Object> arguments, MockChannel mockChannel) {
+        MockQueue mockQueue = exclusive ? new MockExclusiveQueue(queueName, new AmqArguments(arguments), this, mockChannel)
+                : autoDelete ? new MockTransientQueue(queueName, new AmqArguments(arguments), this)
+                        : new MockQueue(queueName, new AmqArguments(arguments), this);
+        queues.putIfAbsent(queueName, mockQueue);
         return new AMQP.Queue.DeclareOk.Builder()
             .queue(queueName)
             .build();
     }
 
     public AMQP.Queue.DeleteOk queueDelete(String queueName, boolean ifUnused, boolean ifEmpty) {
-        Optional<MockQueue> queue = Optional.ofNullable(queues.remove(queueName));
-        queue.ifPresent(MockQueue::notifyDeleted);
+        Optional<MockQueue> queue = Optional.ofNullable(queues.get(queueName))
+            .filter(q -> !ifEmpty || q.messageCount() == 0);
+        queue.ifPresent(q -> queues.remove(queueName).notifyDeleted());
         return new AMQImpl.Queue.DeleteOk(queue.map(MockQueue::messageCount).orElse(0));
     }
 
@@ -140,14 +144,22 @@ public class MockNode implements ReceiverRegistry, TransactionalOperations {
     @Override
     public Optional<Receiver> getReceiver(ReceiverPointer receiverPointer) {
         final Optional<Receiver> receiver;
-        if (receiverPointer.type == ReceiverPointer.Type.EXCHANGE) {
-            receiver = Optional.ofNullable(exchanges.get(receiverPointer.name));
+        if (receiverPointer.type() == ReceiverPointer.Type.EXCHANGE) {
+            receiver = Optional.ofNullable(exchanges.get(receiverPointer.name()));
         } else {
-            receiver = Optional.ofNullable(queues.get(receiverPointer.name));
+            receiver = Optional.ofNullable(queues.get(receiverPointer.name()));
         }
         return receiver;
     }
 
+    @Override
+    public boolean removeReceiver(ReceiverPointer receiverPointer) {
+        if (receiverPointer.type() == ReceiverPointer.Type.QUEUE) {
+            return queueDelete(receiverPointer.name(), false, false).getMessageCount() > 0;
+        } else {
+            return false;
+        }
+    }
 
     private MockExchange getExchangeUnchecked(String exchangeName) {
         if (!exchanges.containsKey(exchangeName)) {
@@ -175,11 +187,6 @@ public class MockNode implements ReceiverRegistry, TransactionalOperations {
     public long consumerCount(String queueName) {
         MockQueue queue = getQueueUnchecked(queueName);
         return queue.consumerCount();
-    }
-
-    public MockNode restartDeliveryLoops() {
-        queues.values().forEach(MockQueue::restartDeliveryLoop);
-        return this;
     }
 
     public void close(MockConnection mockConnection) {

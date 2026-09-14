@@ -50,8 +50,8 @@ public interface DeadLettering {
         public Event(String queue, ReasonType reason, Message message, int count) {
             this.queue = queue;
             this.reason = reason;
-            this.exchange = message.exchangeName;
-            this.routingKeys = Collections.singletonList(message.routingKey);
+            this.exchange = message.exchangeName();
+            this.routingKeys = Collections.singletonList(message.routingKey());
             this.count = count;
         }
 

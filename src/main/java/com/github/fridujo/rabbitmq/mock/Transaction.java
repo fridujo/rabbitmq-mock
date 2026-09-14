@@ -18,22 +18,22 @@ public class Transaction implements TransactionalOperations {
 
     public void commit() {
         publishedMessages.forEach(publishedMessage -> mockNode.basicPublish(
-            publishedMessage.exchange,
-            publishedMessage.routingKey,
-            publishedMessage.mandatory,
-            publishedMessage.immediate,
-            publishedMessage.props,
-            publishedMessage.body
+            publishedMessage.exchange(),
+            publishedMessage.routingKey(),
+            publishedMessage.mandatory(),
+            publishedMessage.immediate(),
+            publishedMessage.props(),
+            publishedMessage.body()
         ));
         publishedMessages.clear();
 
-        rejects.forEach(reject -> mockNode.basicReject(reject.deliveryTag, reject.requeue));
+        rejects.forEach(reject -> mockNode.basicReject(reject.deliveryTag(), reject.requeue()));
         rejects.clear();
 
-        nacks.forEach(nack -> mockNode.basicNack(nack.deliveryTag, nack.multiple, nack.requeue));
+        nacks.forEach(nack -> mockNode.basicNack(nack.deliveryTag(), nack.multiple(), nack.requeue()));
         nacks.clear();
 
-        acks.forEach(ack -> mockNode.basicAck(ack.deliveryTag, ack.multiple));
+        acks.forEach(ack -> mockNode.basicAck(ack.deliveryTag(), ack.multiple()));
         acks.clear();
     }
 
@@ -58,53 +58,12 @@ public class Transaction implements TransactionalOperations {
         acks.add(new Ack(deliveryTag, multiple));
     }
 
-    private static class PublishedMessage {
-        private final String exchange;
-        private final String routingKey;
-        private final boolean mandatory;
-        private final boolean immediate;
-        private final AMQP.BasicProperties props;
-        private final byte[] body;
+    private static record PublishedMessage(String exchange, String routingKey, boolean mandatory, boolean immediate, AMQP.BasicProperties props, byte[] body) {}
 
-        private PublishedMessage(String exchange, String routingKey, boolean mandatory, boolean immediate, AMQP.BasicProperties props, byte[] body) {
-            this.exchange = exchange;
-            this.routingKey = routingKey;
-            this.mandatory = mandatory;
-            this.immediate = immediate;
-            this.props = props;
-            this.body = body;
-        }
-    }
+    private static record Reject(long deliveryTag, boolean requeue) {}
 
-    private static class Reject {
-        private final long deliveryTag;
-        private final boolean requeue;
+    private static record Nack(long deliveryTag, boolean multiple, boolean requeue) {}
 
-        private Reject(long deliveryTag, boolean requeue) {
-            this.deliveryTag = deliveryTag;
-            this.requeue = requeue;
-        }
-    }
+    private static record Ack(long deliveryTag, boolean multiple) {}
 
-    private static class Nack {
-        private final long deliveryTag;
-        private final boolean multiple;
-        private final boolean requeue;
-
-        private Nack(long deliveryTag, boolean multiple, boolean requeue) {
-            this.deliveryTag = deliveryTag;
-            this.multiple = multiple;
-            this.requeue = requeue;
-        }
-    }
-
-    private static class Ack {
-        private final long deliveryTag;
-        private final boolean multiple;
-
-        private Ack(long deliveryTag, boolean multiple) {
-            this.deliveryTag = deliveryTag;
-            this.multiple = multiple;
-        }
-    }
 }

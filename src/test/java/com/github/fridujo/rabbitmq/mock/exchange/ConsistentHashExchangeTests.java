@@ -2,7 +2,6 @@ package com.github.fridujo.rabbitmq.mock.exchange;
 
 import static com.github.fridujo.rabbitmq.mock.AmqArguments.empty;
 import static com.github.fridujo.rabbitmq.mock.exchange.MockExchangeCreator.creatorWithExchangeType;
-import static java.util.Collections.emptyMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.Mockito.mock;
@@ -30,8 +29,8 @@ class ConsistentHashExchangeTests {
     void same_routing_key_dispatch_to_same_queue() {
         SingleReceiverExchange consistentHashEx = (SingleReceiverExchange) mockExchangeFactory.build("test", "x-consistent-hash", empty(), mock(ReceiverRegistry.class));
 
-        consistentHashEx.bind(new ReceiverPointer(ReceiverPointer.Type.QUEUE, "Q1"), "1", emptyMap());
-        consistentHashEx.bind(new ReceiverPointer(ReceiverPointer.Type.QUEUE, "Q2"), "2", emptyMap());
+        consistentHashEx.bind(new ReceiverPointer(ReceiverPointer.Type.QUEUE, "Q1"), "1", Map.of());
+        consistentHashEx.bind(new ReceiverPointer(ReceiverPointer.Type.QUEUE, "Q2"), "2", Map.of());
 
         String firstRoutingKey = UUID.randomUUID().toString();
 
@@ -52,14 +51,14 @@ class ConsistentHashExchangeTests {
         SingleReceiverExchange consistentHashEx = (SingleReceiverExchange) mockExchangeFactory.build("test", "x-consistent-hash", empty(), mock(ReceiverRegistry.class));
 
         ReceiverPointer q1 = new ReceiverPointer(ReceiverPointer.Type.QUEUE, "Q1");
-        consistentHashEx.bind(q1, "32", emptyMap());
+        consistentHashEx.bind(q1, "32", Map.of());
         ReceiverPointer q2 = new ReceiverPointer(ReceiverPointer.Type.QUEUE, "Q2");
-        consistentHashEx.bind(q2, "64", emptyMap());
+        consistentHashEx.bind(q2, "64", Map.of());
         ReceiverPointer q3 = new ReceiverPointer(ReceiverPointer.Type.QUEUE, "Q3");
-        consistentHashEx.bind(q3, " ", emptyMap());
+        consistentHashEx.bind(q3, " ", Map.of());
         ReceiverPointer q4 = new ReceiverPointer(ReceiverPointer.Type.QUEUE, "Q4");
-        consistentHashEx.bind(q4, "AA", emptyMap());
-        consistentHashEx.unbind(q4, "AA", emptyMap());
+        consistentHashEx.bind(q4, "AA", Map.of());
+        consistentHashEx.unbind(q4, "AA", Map.of());
 
         int messagesCount = 1_000_000;
         Map<ReceiverPointer, Long> deliveriesByReceiver = IntStream.range(0, messagesCount)

@@ -44,8 +44,8 @@ class ExtensionTest {
             try (Channel channel = conn.createChannel()) {
                 channel.exchangeDeclare("ex-1", BuiltinExchangeType.TOPIC, true, false, Collections.singletonMap("alternate-exchange", "ex-2"));
                 channel.exchangeDeclare("ex-2", BuiltinExchangeType.FANOUT);
-                channel.queueDeclare("fruits", true, false, false, Collections.emptyMap());
-                channel.queueDeclare("unrouted", true, false, false, Collections.emptyMap());
+                channel.queueDeclare("fruits", true, false, false, Map.of());
+                channel.queueDeclare("unrouted", true, false, false, Map.of());
 
                 assertThat(channel.queueBind("fruits", "ex-1", "fruit.*")).isNotNull();
                 assertThat(channel.queueBind("unrouted", "ex-2", "")).isNotNull();
