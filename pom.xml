@@ -17,28 +17,28 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
 
-        <rabbitmq.client.version>5.26.0</rabbitmq.client.version>
+        <rabbitmq.client.version>5.35.0</rabbitmq.client.version>
 
-        <assertj.version>3.27.3</assertj.version>
-        <mockito.version>5.19.0</mockito.version>
-        <micrometer.version>1.15.4</micrometer.version>
+        <assertj.version>3.27.7</assertj.version>
+        <mockito.version>5.23.0</mockito.version>
+        <micrometer.version>1.17.1</micrometer.version>
         <spring-rabbit.version>3.2.6</spring-rabbit.version>
-        <slf4j.version>2.0.17</slf4j.version>
-        <logback.version>1.5.18</logback.version>
+        <slf4j.version>2.0.18</slf4j.version>
+        <logback.version>1.5.38</logback.version>
 
         <skipTests>false</skipTests>
-        <junit.jupiter.version>5.13.4</junit.jupiter.version>
+        <junit.jupiter.version>5.14.4</junit.jupiter.version>
         <awaitility.version>4.3.0</awaitility.version>
-        <pitest-junit5.version>1.2.1</pitest-junit5.version>
+        <pitest-junit5.version>1.2.3</pitest-junit5.version>
 
-        <maven-javadoc-plugin.version>3.11.3</maven-javadoc-plugin.version>
-        <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
-        <maven-surefire-plugin.version>3.5.3</maven-surefire-plugin.version>
-        <maven-invoker-plugin.version>3.9.1</maven-invoker-plugin.version>
+        <maven-javadoc-plugin.version>3.12.0</maven-javadoc-plugin.version>
+        <maven-source-plugin.version>3.4.0</maven-source-plugin.version>
+        <maven-surefire-plugin.version>3.5.6</maven-surefire-plugin.version>
+        <maven-invoker-plugin.version>3.10.1</maven-invoker-plugin.version>
         <maven-gpg-plugin.version>3.2.8</maven-gpg-plugin.version>
         <nexus-staging-maven-plugin.version>1.7.0</nexus-staging-maven-plugin.version>
-        <jacoco-maven-plugin.version>0.8.13</jacoco-maven-plugin.version>
-        <pitest-maven-plugin.version>1.17.4</pitest-maven-plugin.version>
+        <jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
+        <pitest-maven-plugin.version>1.30.0</pitest-maven-plugin.version>
     </properties>
 
     <scm>
