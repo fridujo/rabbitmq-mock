@@ -56,6 +56,7 @@ public class MockChannel implements Channel {
     private Transaction transaction;
     private boolean confirmMode = false;
     private long nextPublishSeqNo = 1L;
+    private int prefetchCount = 0;
 
     public MockChannel(int channelNumber, MockNode node, MockConnection mockConnection, MetricsCollectorWrapper metricsCollectorWrapper) {
         this.channelNumber = channelNumber;
@@ -159,18 +160,22 @@ public class MockChannel implements Channel {
 
     @Override
     public void basicQos(int prefetchSize, int prefetchCount, boolean global) {
-        // Nothing to be done
+        this.prefetchCount = prefetchCount;
     }
 
     @Override
     public void basicQos(int prefetchCount, boolean global) {
-        basicQos(0, prefetchCount, true);
+        basicQos(0, prefetchCount, global);
     }
 
     @Override
     public void basicQos(int prefetchCount) {
         // Called when BlockingQueueConsumer#start
-        basicQos(prefetchCount, true);
+        basicQos(prefetchCount, false);
+    }
+
+    public int getPrefetchCount() {
+        return prefetchCount;
     }
 
     @Override

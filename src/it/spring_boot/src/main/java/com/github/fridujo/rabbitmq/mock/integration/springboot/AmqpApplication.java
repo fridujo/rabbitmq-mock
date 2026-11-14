@@ -27,7 +27,7 @@ public class AmqpApplication {
         try (ConfigurableApplicationContext context = SpringApplication.run(AmqpApplication.class, args)) {
             rawConfiguration(context.getBean(ConnectionFactory.class));
 
-            context.getBean(Sender.class).send(0);
+            context.getBean(Sender.class).send();
             Receiver receiver = context.getBean(Receiver.class);
             while (receiver.getMessages().isEmpty()) {
                 TimeUnit.MILLISECONDS.sleep(100L);

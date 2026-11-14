@@ -81,18 +81,13 @@ public class MockQueue implements Receiver {
 
         delivered = deadLetterFirstMessageIfExpired();
 
-        if (consumersByTag.size() > 0) {
+        ConsumerAndTag nextConsumer = selectNextAvailableConsumer();
+        if (nextConsumer != null) {
             Message message = messages.poll();
             if (message != null) {
                 if (message.isExpired()) {
                     deadLetterWithReason(message, DeadLettering.ReasonType.EXPIRED);
                 } else {
-                    List<ConsumerAndTag> consumerAndTags = new ArrayList<>(consumersByTag.size());
-
-                    consumersByTag.values().forEach(consumerAndTags::add);  // iterates while synchronized
-
-                    int index = consumerRollingSequence.incrementAndGet() % consumerAndTags.size();
-                    ConsumerAndTag nextConsumer = consumerAndTags.get(index);
                     long deliveryTag = nextConsumer.deliveryTagSupplier.get();
 
                     unackedMessagesByDeliveryTag.put(deliveryTag, message);
@@ -126,6 +121,38 @@ public class MockQueue implements Receiver {
             }
         }
         return delivered;
+    }
+
+    private ConsumerAndTag selectNextAvailableConsumer() {
+        List<ConsumerAndTag> consumerAndTags = new ArrayList<>(consumersByTag.size());
+        consumersByTag.values().forEach(consumerAndTags::add);  // iterates while synchronized
+        if (consumerAndTags.isEmpty()) {
+            return null;
+        }
+        int size = consumerAndTags.size();
+        for (int i = 0; i < size; i++) {
+            int index = Math.floorMod(consumerRollingSequence.incrementAndGet(), size);
+            ConsumerAndTag candidate = consumerAndTags.get(index);
+            if (canAcceptDelivery(candidate)) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    private boolean canAcceptDelivery(ConsumerAndTag consumer) {
+        if (consumer.autoAck) {
+            return true;
+        }
+        int prefetchCount = consumer.mockChannel.getPrefetchCount();
+        if (prefetchCount <= 0) {
+            return true;
+        }
+        synchronized (unackedDeliveryTagsByConsumerTag) {
+            Set<Long> unackedDeliveryTags = unackedDeliveryTagsByConsumerTag.get(consumer.tag);
+            int unackedCount = unackedDeliveryTags == null ? 0 : unackedDeliveryTags.size();
+            return unackedCount < prefetchCount;
+        }
     }
 
     private boolean deadLetterFirstMessageIfExpired() {
@@ -250,14 +277,6 @@ public class MockQueue implements Receiver {
         if (removed != null) {
             Consumer consumer = removed.consumer;
             consumer.handleCancelOk(consumerTag);
-
-            List<Long> unackedDeliveryTags;
-
-            synchronized(unackedDeliveryTagsByConsumerTag) {  // protects also the nested consumer tag set
-                unackedDeliveryTags = new ArrayList<>(unackedDeliveryTagsByConsumerTag.computeIfAbsent(consumerTag, k -> Collections.emptySet()));
-            }
-
-            unackedDeliveryTags.forEach(deliveryTag -> basicReject(deliveryTag, true));
         }
     }
 

@@ -12,8 +12,8 @@ public class Sender {
         this.rabbitTemplate = rabbitTemplate;
     }
 
-    public void send(int i) {
+    public void send() {
         System.out.println("Sending message...");
-        rabbitTemplate.convertAndSend("", AmqpApplication.QUEUE_NAME, "Hello " + i + " from RabbitMQ!");
+        rabbitTemplate.convertAndSend("", AmqpApplication.QUEUE_NAME, "Hello from RabbitMQ!");
     }
 }
