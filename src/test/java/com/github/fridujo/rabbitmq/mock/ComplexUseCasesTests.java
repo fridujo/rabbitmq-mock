@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.jupiter.api.Test;
 
@@ -215,30 +216,33 @@ class ComplexUseCasesTests {
     }
 
     @Test
-    void unacked_messages_are_made_available_anew_when_consumer_is_cancelled() throws InterruptedException {
+    void prefetch_count_prevents_overdelivery_and_allows_ack_after_cancel() throws InterruptedException {
         try (MockConnection conn = new MockConnectionFactory().newConnection()) {
             try (MockChannel channel = conn.createChannel()) {
                 String queueName = QueueDeclarator.dynamicQueue().declare(channel).getQueue();
                 Arrays.asList("one", "two", "three")
                     .forEach(message -> channel.basicPublish("", queueName, null, message.getBytes()));
 
-                Semaphore deliveries = new Semaphore(-2);
+                channel.basicQos(1);
+                AtomicLong firstDeliveryTag = new AtomicLong();
+                Semaphore deliveries = new Semaphore(0);
                 String consumerTag = channel.basicConsume(queueName, false, Collections.emptyMap(), new DefaultConsumer(channel) {
                     @Override
                     public void handleDelivery(String consumerTag,
                                                Envelope envelope,
                                                AMQP.BasicProperties properties,
                                                byte[] body) {
-                        if ("one".equals(new String(body))) {
-                            channel.basicAck(envelope.getDeliveryTag(), false);
-                        }
+                        firstDeliveryTag.set(envelope.getDeliveryTag());
                         deliveries.release();
                     }
                 });
 
-                assertThat(deliveries.tryAcquire(1, TimeUnit.SECONDS)).as("Messages have been delivered").isTrue();
+                assertThat(deliveries.tryAcquire(1, TimeUnit.SECONDS)).as("First message has been delivered").isTrue();
 
                 channel.basicCancel(consumerTag);
+                assertThat(channel.messageCount(queueName)).isEqualTo(2);
+                channel.basicAck(firstDeliveryTag.get(), false);
+                channel.basicQos(0);
 
                 List<String> messages = new ArrayList<>();
                 Semaphore deliveriesRoundTwo = new Semaphore(-1);

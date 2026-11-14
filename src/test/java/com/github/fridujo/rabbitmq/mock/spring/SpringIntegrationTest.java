@@ -52,6 +52,35 @@ class SpringIntegrationTest {
     }
 
     @Test
+    void basic_get_with_timeout_case() {
+        String messageBody1 = "Hello world 1!";
+        String messageBody2 = "Hello world 2!";
+        try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(AmqpConfiguration.class)) {
+            RabbitTemplate rabbitTemplate = queueAndExchangeSetup(context);
+            RabbitAdmin rabbitAdmin = context.getBean(RabbitAdmin.class);
+
+            rabbitTemplate.convertAndSend(EXCHANGE_NAME, "test.key1", messageBody1);
+            rabbitTemplate.convertAndSend(EXCHANGE_NAME, "test.key1", messageBody2);
+            assertThat(rabbitAdmin.getQueueInfo(QUEUE_NAME).getMessageCount()).isEqualTo(2);
+
+            Message firstMessage = rabbitTemplate.receive(QUEUE_NAME, -1);
+            assertThat(firstMessage).isNotNull();
+            assertThat(firstMessage.getBody()).isEqualTo(messageBody1.getBytes());
+            assertThat(rabbitAdmin.getQueueInfo(QUEUE_NAME).getMessageCount()).isEqualTo(1);
+            assertThat(rabbitAdmin.getQueueInfo(QUEUE_NAME).getConsumerCount()).isEqualTo(0);
+
+            Message secondMessage = rabbitTemplate.receive(QUEUE_NAME, 100);
+            assertThat(secondMessage).isNotNull();
+            assertThat(secondMessage.getBody()).isEqualTo(messageBody2.getBytes());
+            assertThat(rabbitAdmin.getQueueInfo(QUEUE_NAME).getMessageCount()).isEqualTo(0);
+            assertThat(rabbitAdmin.getQueueInfo(QUEUE_NAME).getConsumerCount()).isEqualTo(0);
+
+            Message thirdMessage = rabbitTemplate.receive(QUEUE_NAME, 100);
+            assertThat(thirdMessage).isNull();
+        }
+    }
+
+    @Test
     void basic_consume_case() {
         String messageBody = "Hello world!";
         try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(AmqpConfiguration.class)) {
